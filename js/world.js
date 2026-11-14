@@ -2,10 +2,12 @@
 // No DOM here, so it can be tested from Node.
 import { DX, DY, tileAt, isSolid } from './map.js';
 import { spawnEnemies, enemyAt } from './combat.js';
+import { useShrine } from './magic.js';
 
 export function newGame(map, rng = Math.random) {
   const g = { map, x: map.start.x, y: map.start.y, dir: map.start.dir, bag: [], msgs: [], rng,
-    party: [], enemies: [], fx: [], paused: false, defeated: false };
+    party: [], enemies: [], fx: [], paused: false, defeated: false,
+    rations: 4, hungerMs: 0, starving: false, starveMs: 0, lightMs: 0, sanctMs: 0 };
   spawnEnemies(g);
   return g;
 }
@@ -30,13 +32,25 @@ export function look(g) {
   }
 }
 
+function pickUp(g, idx) {
+  const item = g.map.items[idx];
+  if (item.kind === 'ration') {
+    g.rations += item.amount; say(g, `You find ${item.amount} rations. (${g.rations} total)`);
+  } else if (item.kind === 'potion') {
+    const h = g.party.find(h => h.hp > 0 && h.quickSlots.includes(null)) || g.party.find(h => h.quickSlots.includes(null));
+    if (!h) { say(g, `You see a ${item.name}, but every quick slot is full.`); return; }
+    h.quickSlots[h.quickSlots.indexOf(null)] = { id: item.id, name: item.name };
+    say(g, `${h.name} takes the ${item.name}.`);
+  } else {
+    g.bag.push(item.id); say(g, `You pick up the ${item.name}.`);
+  }
+  g.map.items.splice(idx, 1);
+}
+
 function enter(g) {
   const m = g.map;
   const it = m.items.findIndex(i => i.x === g.x && i.y === g.y);
-  if (it >= 0) {
-    const [item] = m.items.splice(it, 1);
-    g.bag.push(item.id); say(g, `You pick up the ${item.name}.`);
-  }
+  if (it >= 0) pickUp(g, it);
   const t = tileAt(m, g.x, g.y);
   if (t === 'P') {
     const p = m.plates.find(p => p.x === g.x && p.y === g.y);
@@ -44,6 +58,8 @@ function enter(g) {
   } else if (t === 'T') {
     const tp = m.teleports.find(p => p.x === g.x && p.y === g.y);
     if (tp) { g.x = tp.to.x; g.y = tp.to.y; if (tp.to.dir != null) g.dir = tp.to.dir; say(g, 'The world lurches. You are elsewhere.'); }
+  } else if (t === 'H') {
+    say(g, 'A shrine glows softly. Press F to pray here.');
   } else if (t === 'O') {
     g.dir = Math.floor(g.rng() * 4) % 4; say(g, 'You spin and lose your bearings!');
   }
@@ -51,6 +67,7 @@ function enter(g) {
 }
 
 export function interact(g) {
+  if (tileAt(g.map, g.x, g.y) === 'H' && useShrine(g)) return true;       // pray at the shrine you stand on
   const [ax, ay] = ahead(g);
   const t = tileAt(g.map, ax, ay);
   if (t === 'D') { setTile(g.map, ax, ay, 'd'); say(g, 'The door creaks open.'); return true; }

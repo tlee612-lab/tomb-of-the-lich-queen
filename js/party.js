@@ -2,6 +2,7 @@
 // heroes are all built by createHero, so there is one format.
 import { CLASSES, ATTRS, ATTR_BASE, ATTR_MAX, ATTR_POINTS } from './data/classes.js';
 import { ROSTER, QUICK_START } from './data/roster.js';
+import { loadoutFor } from './spellbook.js';
 
 export const mod = v => Math.floor((v - 10) / 2);
 
@@ -25,13 +26,15 @@ export function createHero(o) {
   if (errs.length) throw new Error(errs.join(' '));
   const c = CLASSES[o.class];
   const hpMax = Math.max(1, c.hpBase + 2 * mod(o.attrs.might));
-  return {
+  const hero = {
     id: o.id || 'h' + Math.random().toString(36).slice(2, 8),
     name: o.name.trim(), class: o.class, portrait: o.portrait || null,
     level: 1, xp: 0, attrs: { ...o.attrs }, hpMax, hp: hpMax, status: [], row: c.row,
     weapon: c.weapon, armor: c.armor, cd: 0, inventory: [], quickSlots: [null, null],
-    spellsKnown: [...c.spells], spellsMemorized: c.spells.slice(0, c.slots),
+    spellsKnown: [...c.spells], spellsMemorized: [],
   };
+  hero.spellsMemorized = loadoutFor(hero);
+  return hero;
 }
 
 export const rosterHeroes = () => ROSTER.map(createHero);

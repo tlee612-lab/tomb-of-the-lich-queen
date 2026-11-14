@@ -108,8 +108,16 @@ Real-time, cooldown-driven.
 - **Quick casting:** open the caster's spell list, click a spell, then click the
   target (enemy, ally, or just fire ahead). A spell is two clicks at most. This avoids
   the clunky casting of older games. Spells have a cooldown on the caster as well.
-- **Resting** anywhere restores memorized spells and some HP, costs one ration per
-  hero, and can be interrupted by wandering monsters.
+- **Resting** anywhere restores memorized spells and half of max HP, and costs one ration
+  (rations are shared by the party). It is refused while enemies are near. A wandering
+  monster interrupts a rest 25% of the time: only half the HP is restored and spells are not.
+  Resting does not revive the fallen.
+- **Food:** the party eats one ration every 2.5 minutes. With none left it starves: each
+  hero loses 1 HP every 20 seconds but never drops below 1, so hunger weakens and never kills.
+- **Revival:** a shrine (stand on it, press F) revives the fallen at half HP and mends
+  everyone, with limited charges. A draught of return, kept in a quick slot, revives one hero.
+- **Implemented spells (milestone 5):** Mender's Touch, Lantern Ward, Cinder Dart, Frostbind,
+  plus passive Sanctify (a living Votary burns adjacent undead). The rest of the list is for later.
 
 ### Spell list (original, 12 total across two casters)
 | Spell | Class | Effect |

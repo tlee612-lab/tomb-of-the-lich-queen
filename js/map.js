@@ -5,7 +5,7 @@
 //   'D' closed door (bump or interact to open)   'd' open door
 //   'L' locked door (needs a key; see map.locks)
 //   'G' closed gate (opened by a plate or switch)  'g' open gate
-//   'P' pressure plate  'T' teleporter  'O' spinner
+//   'P' pressure plate  'T' teleporter  'O' spinner  'H' shrine (stand on it, press F)
 export const DX = [0, 1, 0, -1];
 export const DY = [-1, 0, 1, 0];
 export const DIR_NAMES = ['N', 'E', 'S', 'W'];
@@ -20,7 +20,7 @@ const TEST = {
     '#...D...L..P...#',
     '#...#...#......#',
     '#########G######',
-    '#.......#......#',
+    '#.......#....H.#',
     '#...O...#...T..#',
     '#.......#......#',
     '#######G########',
@@ -28,7 +28,14 @@ const TEST = {
     '################',
   ],
   // keys lying on the floor
-  items: [{ x: 6, y: 2, kind: 'key', id: 'bronze', name: 'bronze key' }],
+  items: [
+    { x: 6, y: 2, kind: 'key', id: 'bronze', name: 'bronze key' },
+    { x: 12, y: 1, kind: 'ration', name: 'rations', amount: 2 },
+    { x: 14, y: 3, kind: 'potion', id: 'heal', name: 'healing potion' },
+    { x: 2, y: 7, kind: 'potion', id: 'return', name: 'draught of return' },
+    { x: 3, y: 1, kind: 'ration', name: 'rations', amount: 2 },
+  ],
+  shrines: [{ x: 13, y: 5, charges: 2 }],
   // locked door position -> key id required
   locks: { '8,2': 'bronze' },
   // pressure plates: stay down once pressed, open every target
@@ -54,7 +61,7 @@ export function loadMap() {
     items: copy(TEST.items), locks: copy(TEST.locks),
     plates: copy(TEST.plates).map(p => ({ ...p, pressed: false })),
     switches: copy(TEST.switches).map(s => ({ ...s, found: !s.hidden, on: false })),
-    teleports: copy(TEST.teleports), monsters: copy(TEST.monsters),
+    teleports: copy(TEST.teleports), monsters: copy(TEST.monsters), shrines: copy(TEST.shrines),
   };
 }
 

@@ -2,7 +2,7 @@
 * { box-sizing: border-box; }
 body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.3 "Courier New", monospace;
   display:flex; justify-content:center; padding:12px; }
-#game { display:grid; grid-template-columns:auto 220px; gap:8px; max-width:100%; }
+#game { display:grid; grid-template-columns:auto 290px; gap:8px; max-width:100%; }
 #viewframe { border:4px ridge var(--edge); background:#000; position:relative; justify-self:start; align-self:start; }
 #view { display:block; width:min(672px, calc(100vw - 40px)); aspect-ratio:448/300; image-rendering:pixelated; }
 #party { display:grid; grid-template-columns:1fr 1fr; gap:6px; align-content:start; }
@@ -18,7 +18,7 @@ body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.3 "Courier 
 #pad button { height:36px; background:var(--panel); color:var(--ink); border:2px solid var(--edge);
   font-size:18px; cursor:pointer; }
 #pad button:active { background:var(--edge); }
-#log { flex:1; min-height:80px; background:var(--panel); border:2px solid var(--edge); padding:6px; }
+#log { flex:1; min-height:80px; white-space:pre-line; background:var(--panel); border:2px solid var(--edge); padding:6px; }
 @media (max-width:960px) { #game { grid-template-columns:1fr; } }
 
 [hidden] { display:none !important; }
@@ -56,3 +56,16 @@ body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.3 "Courier 
 .atk kbd { float:right; opacity:.7; }
 .atk.ready { border-color:#c9a24a; }
 .hero .dmg { position:absolute; right:6px; top:2px; font-weight:bold; color:#ff6b6b; text-shadow:0 0 3px #000; }
+
+#restBtn { align-self:stretch; background:var(--panel); color:var(--ink); border:2px solid var(--edge); font:inherit; padding:0 10px; cursor:pointer; }
+#restBtn:hover { background:var(--edge); }
+.spells, .quick { display:grid; gap:3px; margin-top:4px; }
+.quick { grid-template-columns:1fr 1fr; }
+.spell, .qs { background:var(--bg); color:var(--ink); border:2px solid #4a3b63; font:inherit; font-size:11px; padding:2px 4px; cursor:pointer; text-align:left; }
+.qs { border-color:var(--edge); min-height:22px; }
+.spell:disabled, .qs:disabled { opacity:.45; cursor:not-allowed; }
+.spell .sc { float:right; opacity:.8; }
+.spell.armed { background:#4a3b63; border-color:#b49cf0; }
+.hero .dmg.good { color:#7be07b; }
+#party.targeting .hero[data-i]:not(.fallen) { cursor:crosshair; outline:2px dashed #b49cf0; }
+#status { font-size:12px; opacity:.9; }

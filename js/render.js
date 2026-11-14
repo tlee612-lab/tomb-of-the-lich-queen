@@ -18,8 +18,9 @@ const PALETTE = {
 
 function proj(x, y, z) { return [CX + (x * FOCAL) / z, CY + (y * FOCAL) / z]; }
 
+let reach = DEPTH + 1.2;     // how far the light carries; the Lantern Ward extends it
 function shade(base, z) {
-  const f = Math.max(0.12, 1 - z / (DEPTH + 1.2));
+  const f = Math.max(0.12, 1 - z / reach);
   return `rgb(${(base[0] * f) | 0},${(base[1] * f) | 0},${(base[2] * f) | 0})`;
 }
 
@@ -96,6 +97,10 @@ function floorDecal(ctx, ch, z0, z1, t) {
     const pulse = 0.5 + 0.2 * Math.sin(t / 250);
     floorMark(ctx, z0, z1, 0.8, shade([40, 70, 150], zm), shade([120, 170, 255], zm));
     floorMark(ctx, z0, z1, pulse, shade([90, 140, 230], zm), null);
+  } else if (ch === 'H') {
+    const glow = 0.5 + 0.15 * Math.sin(t / 400);
+    floorMark(ctx, z0, z1, 0.8, shade([70, 55, 20], zm), shade([240, 200, 90], zm));
+    floorMark(ctx, z0, z1, glow * 0.7, shade([230, 190, 80], zm), null);
   } else if (ch === 'O') {
     floorMark(ctx, z0, z1, 0.8, shade([90, 40, 110], zm), shade([180, 110, 200], zm));
     floorMark(ctx, z0, z1, 0.4, shade([50, 20, 70], zm), null);
@@ -175,6 +180,7 @@ function drawEnemies(ctx, p, cx, cy, z0, z1, t) {
 }
 
 export function render(ctx, map, p, t = 0) {
+  reach = p.lightMs > 0 ? DEPTH + 4 : DEPTH + 1.2;
   const g1 = ctx.createLinearGradient(0, 0, 0, CY);
   g1.addColorStop(0, '#0a0806'); g1.addColorStop(1, '#2b231a');
   ctx.fillStyle = g1; ctx.fillRect(0, 0, W, CY);
@@ -201,8 +207,10 @@ export function render(ctx, map, p, t = 0) {
     if (solid(k, 0)) continue;
     const [cx, cy] = cell(k, 0);
     floorDecal(ctx, tile(k, 0), z0, z1, t);
-    if (map.items.some(i => i.x === cx && i.y === cy)) {
-      floorMark(ctx, z0, z1, 0.25, shade([230, 200, 70], (z0 + z1) / 2), shade([120, 100, 30], (z0 + z1) / 2));
+    const item = map.items.find(i => i.x === cx && i.y === cy);
+    if (item) {
+      const col = { key: [230, 200, 70], ration: [170, 120, 70], potion: item.id === 'return' ? [200, 90, 220] : [220, 70, 70] }[item.kind] || [230, 200, 70];
+      floorMark(ctx, z0, z1, 0.25, shade(col, (z0 + z1) / 2), shade([255, 255, 255].map((v, i) => col[i] * 0.5), (z0 + z1) / 2));
     }
     if (solid(k, -1)) sideWall(ctx, -0.5, z0, z1, tile(k, -1));
     if (solid(k, 1)) sideWall(ctx, 0.5, z0, z1, tile(k, 1));

@@ -11,13 +11,14 @@ then visit http://localhost:8000.
 
 Controls: W/S move, A/D sidestep, Q/E turn, F / Space / click the view to use what is in front.
 Click a monster in front of you, or press 1-4, to attack with that hero. P pauses.
+Spells: click a spell on a caster's card (enemy spells fire at the monster in front; ally spells then ask you to click a hero). R or the Rest button rests. F on a shrine prays.
 
 ## Test
 
     npm test
 
-Runs the rules tests: the map walkthrough (`js/world.js`), party and hero creation, and combat
-(`js/combat.js`).
+Runs the rules tests: the map walkthrough (`js/world.js`), party and hero creation, combat
+(`js/combat.js`), and spells, resting, food, potions and shrines (`js/magic.js`).
 
 ## Using your own data and graphics
 
@@ -26,3 +27,4 @@ Runs the rules tests: the map walkthrough (`js/world.js`), party and hero creati
   Without one, a letter tile is shown.
 - Monsters: `js/data/monsters.js`; weapons: `js/data/weapons.js`. Set `sprite: 'assets/monsters/x.png'` on a
   monster to replace the drawn placeholder.
+- Spells: `js/data/spells.js`. Spell slots by class and level: `js/spellbook.js`.

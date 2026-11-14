@@ -2,7 +2,9 @@ import { loadMap, DIR_NAMES } from './map.js';
 import { newGame, step, turn, interact, look } from './world.js';
 import { render } from './render.js';
 import { runSetup, portraitHTML } from './setup.js';
-import { heroAttack, canAct, enemyAhead, tick, retry, alive } from './combat.js';
+import { heroAttack, canAct, enemyAhead, retry, alive } from './combat.js';
+import { castSpell, useQuick, rest, advance, memorizedCount } from './magic.js';
+import { SPELLS } from './data/spells.js';
 
 const map = loadMap();
 const game = newGame(map);
@@ -41,6 +43,28 @@ const KEYS = {
 
 function act(name) { if (locked()) return; ACTIONS[name](); flushMessages(); }
 
+let pending = null;                       // an ally spell waiting for its target: { i, name }
+function cancelTarget() { pending = null; $('party').classList.remove('targeting'); }
+function doRest() { if (locked()) return; cancelTarget(); rest(game); flushMessages(); }
+$('restBtn').addEventListener('click', doRest);
+
+function cast(i, name) {
+  if (locked()) return;
+  const sp = SPELLS[name];
+  if (sp.target === 'ally') {
+    if (!canAct(game, i).ok && canAct(game, i).why === 'fallen') return;
+    pending = { i, name }; $('party').classList.add('targeting');
+    game.msgs.push(`${name}: choose an ally (Esc cancels).`); return;
+  }
+  const r = castSpell(game, i, name);
+  if (!r.ok && r.why !== 'not ready' && r.why !== 'fallen') game.msgs.push(r.why);
+}
+function quick(i, s) {
+  if (locked()) return;
+  const r = useQuick(game, i, s);
+  if (!r.ok && !['not ready', 'fallen', 'empty'].includes(r.why)) game.msgs.push(r.why);
+}
+
 function togglePause() { if (started && !game.defeated) game.paused = !game.paused; }
 
 addEventListener('keydown', e => {
@@ -48,6 +72,8 @@ addEventListener('keydown', e => {
   if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;            // typing in a form
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (k === 'p') { e.preventDefault(); togglePause(); return; }
+  if (k === 'Escape') { cancelTarget(); return; }
+  if (k === 'r') { e.preventDefault(); doRest(); return; }
   if (/^[1-4]$/.test(k)) { e.preventDefault(); attack(+k - 1); return; }
   if (e.target.tagName === 'BUTTON' && (k === ' ' || k === 'Enter')) return;   // let focused buttons click
   const a = KEYS[k];
@@ -73,10 +99,23 @@ function buildParty() {
       <div class="cl">${h.class} L<span class="lv"></span> · ${h.row ? 'back' : 'front'}</div>
       <div class="bar"><i class="hp"></i></div><div class="hpt"></div>
       <button type="button" class="atk" data-i="${i}"><span class="cdfill"></span><span class="wl">${h.weapon}</span><kbd>${i + 1}</kbd></button>
+      ${h.spellsKnown.length ? `<div class="spells">${h.spellsKnown.map(s => `<button type="button" class="spell" data-s="${s}" title="${SPELLS[s].text}"><span class="sn">${s}</span><span class="sc"></span></button>`).join('')}</div>` : ''}
+      <div class="quick"><button type="button" class="qs" data-q="0"></button><button type="button" class="qs" data-q="1"></button></div>
       <span class="dmg"></span>
     </div>`).join('') + '<div class="hero" style="grid-column:1/-1"><div class="cl bag"></div></div>';
   cards = [...document.querySelectorAll('.hero[data-i]')];
-  cards.forEach(c => c.querySelector('.atk').addEventListener('click', () => attack(+c.dataset.i)));
+  cards.forEach(c => {
+    const i = +c.dataset.i;
+    c.querySelector('.atk').addEventListener('click', () => attack(i));
+    c.querySelectorAll('.spell').forEach(b => b.addEventListener('click', () => cast(i, b.dataset.s)));
+    c.querySelectorAll('.qs').forEach(b => b.addEventListener('click', () => quick(i, +b.dataset.q)));
+    c.addEventListener('click', e => {                     // second click of a two-click ally spell
+      if (!pending || e.target.closest('button')) return;
+      const r = castSpell(game, pending.i, pending.name, i);
+      if (!r.ok && r.why !== 'not ready') game.msgs.push(r.why);
+      cancelTarget();
+    });
+  });
 }
 
 function updateParty() {
@@ -86,12 +125,23 @@ function updateParty() {
     c.querySelector('.lv').textContent = h.level;
     c.querySelector('.hp').style.width = `${(100 * h.hp) / h.hpMax}%`;
     c.querySelector('.hpt').textContent = alive(h) ? `${h.hp}/${h.hpMax}` : 'Fallen';
-    c.querySelector('.dmg').textContent = h.hurt ? h.hurt.text : '';
+    const dm = c.querySelector('.dmg'); dm.textContent = h.hurt ? h.hurt.text : ''; dm.classList.toggle('good', !!h.hurt?.good);
+    c.querySelectorAll('.spell').forEach(b => {
+      const n = memorizedCount(h, b.dataset.s);
+      b.querySelector('.sc').textContent = `x${n}`;
+      b.disabled = !alive(h) || n === 0;
+      b.classList.toggle('armed', !!pending && pending.i === i && pending.name === b.dataset.s);
+    });
+    c.querySelectorAll('.qs').forEach(b => {
+      const it = h.quickSlots[+b.dataset.q];
+      b.textContent = it ? it.name : '-'; b.disabled = !alive(h) || !it;
+    });
     c.querySelector('.cdfill').style.width = h.cdMax && h.cd > 0 ? `${(100 * h.cd) / h.cdMax}%` : '0';
     btn.disabled = !alive(h) || (!can.ok && /cannot reach/.test(can.why));
     btn.classList.toggle('ready', can.ok && !!enemyAhead(game));
   });
-  document.querySelector('.bag').textContent = `Bag: ${game.bag.join(', ') || 'empty'}`;
+  const mins = Math.floor(game.lightMs / 60000), secs = String(Math.floor(game.lightMs / 1000) % 60).padStart(2, '0');
+  document.querySelector('.bag').textContent = `Bag: ${game.bag.join(', ') || 'empty'} | Rations: ${game.rations}${game.starving ? ' STARVING' : ''}${game.lightMs > 0 ? ` | Light ${mins}:${secs}` : ''}`;
 }
 
 function updateOverlay() {
@@ -103,7 +153,7 @@ function updateOverlay() {
 
 let last = 0;
 function loop(t) {
-  tick(game, Math.min(100, t - last)); last = t;
+  advance(game, Math.min(100, t - last)); last = t;
   flushMessages();
   render(ctx, map, game, t);
   $('compass').textContent = DIR_NAMES[game.dir];
@@ -117,7 +167,7 @@ function begin(party) {
   $('game').hidden = false;
   buildParty();
   look(game);
-  game.msgs.push('You enter the Barrow Halls. W/S move, A/D sidestep, Q/E turn, F use. Click a monster or press 1-4 to attack, P pauses.');
+  game.msgs.push('You enter the Barrow Halls. W/S move, A/D sidestep, Q/E turn, F use. Click a monster or press 1-4 to attack, R rests, P pauses.');
   last = performance.now();
   requestAnimationFrame(loop);
 }

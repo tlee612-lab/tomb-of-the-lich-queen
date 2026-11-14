@@ -2,15 +2,16 @@
 import { DX, DY, isSolid } from './map.js';
 import { MONSTERS } from './data/monsters.js';
 import { WEAPONS } from './data/weapons.js';
+import { slotsFor, loadoutFor } from './spellbook.js';
 
 const mod = v => Math.floor((v - 10) / 2);
 export const XP_LEVELS = [0, 30, 80, 160, 300];   // XP_LEVELS[n] = XP needed to leave level n
 export const MAX_LEVEL = 5;
 
-const d20 = g => Math.floor(g.rng() * 20) + 1;
-const dice = (g, [n, s, b]) => { let t = b; for (let i = 0; i < n; i++) t += Math.floor(g.rng() * s) + 1; return t; };
+export const d20 = g => Math.floor(g.rng() * 20) + 1;
+export const dice = (g, [n, s, b]) => { let t = b; for (let i = 0; i < n; i++) t += Math.floor(g.rng() * s) + 1; return t; };
 const say = (g, m) => g.msgs.push(m);
-const fx = (g, cell, text, color) => g.fx.push({ cell: { x: cell.x, y: cell.y }, text, color, ttl: 900, age: 0 });
+export const addFx = (g, cell, text, color) => g.fx.push({ cell: { x: cell.x, y: cell.y }, text, color, ttl: 900, age: 0 });
 
 export const alive = h => h.hp > 0;
 export const heroDefense = h => 10 + mod(h.attrs.agility) + (h.armor || 0);
@@ -40,10 +41,12 @@ export function gainXp(g, h, n) {
     const up = Math.max(3, 4 + mod(h.attrs.might));
     h.hpMax += up; h.hp = Math.min(h.hpMax, h.hp + up);
     say(g, `${h.name} reaches level ${h.level}! (+${up} max HP)`);
+    const lo = loadoutFor(h);                                   // casters gain a memorized slot
+    while (h.spellsMemorized.length < slotsFor(h)) h.spellsMemorized.push(lo[h.spellsMemorized.length]);
   }
 }
 
-function kill(g, e) {
+export function kill(g, e) {
   const t = MONSTERS[e.type];
   say(g, `${e.name} is destroyed.`);
   const living = g.party.filter(alive);
@@ -59,21 +62,21 @@ export function heroAttack(g, i) {
   h.cdMax = h.cd = Math.max(300, Math.round(w.ms * (1 - 0.03 * mod(h.attrs.agility))));
   const roll = d20(g);
   if (roll === 1 || (roll !== 20 && roll + h.level + mod(stat) < t.def)) {
-    say(g, `${h.name} misses the ${e.name}.`); fx(g, e, 'miss', '#bbb');
+    say(g, `${h.name} misses the ${e.name}.`); addFx(g, e, 'miss', '#bbb');
     return { ok: true, hit: false };
   }
   let dmg = Math.max(1, dice(g, w.dice) + mod(stat));
   if (roll === 20) dmg *= 2;
   e.hp -= dmg; e.flash = 150;
   say(g, `${h.name} ${roll === 20 ? 'crits' : 'hits'} the ${e.name} for ${dmg}.`);
-  fx(g, e, String(dmg), roll === 20 ? '#ffd24a' : '#fff');
+  addFx(g, e, String(dmg), roll === 20 ? '#ffd24a' : '#fff');
   if (e.hp <= 0) kill(g, e);
   return { ok: true, hit: true, dmg };
 }
 
 // ---- enemies -------------------------------------------------------------------------
 
-function distances(g) {
+export function distances(g) {
   const m = g.map, dist = Array.from({ length: m.h }, () => Array(m.w).fill(undefined));
   const q = [[g.x, g.y]]; dist[g.y][g.x] = 0;
   for (let i = 0; i < q.length; i++) {
@@ -117,7 +120,9 @@ export function tick(g, dt) {
     const dist = distances(g);
     for (const e of liveEnemies) {
       const t = MONSTERS[e.type], d = dist[e.y][e.x];
-      e.flash = Math.max(0, e.flash - dt); e.atkCd -= dt; e.moveCd -= dt;
+      const edt = e.slowMs > 0 ? dt / 2 : dt;                    // slowed enemies act at half speed
+      e.slowMs = Math.max(0, (e.slowMs || 0) - dt);
+      e.flash = Math.max(0, e.flash - dt); e.atkCd -= edt; e.moveCd -= edt;
       if (d === 1) {
         if (e.atkCd <= 0) { enemyAttack(g, e); e.atkCd = t.atkMs; }
       } else if (d !== undefined && d <= t.aggro && e.moveCd <= 0) {

@@ -214,8 +214,8 @@ spell button. Click a portrait to open the character sheet.
 
 ## 12. Milestones
 
-1. **Engine scaffold** (this repo's next commit): grid movement, perspective renderer,
-   test map, party panel stub.
+1. **Engine scaffold:** grid movement, perspective renderer, test map, party panel. DONE
+   (milestones 1-5 are done: engine, puzzles, party and hero creation, combat, magic and food.)
 2. Doors, keys, switches, plates, teleporters, spinners.
 3. Party data, hero creation, roster.
 4. Combat, cooldowns, monsters.
@@ -234,3 +234,25 @@ its 4th edition (version 3.0 vs 4.0 not confirmed).
 complaints, and tabletop saving throws. Two source sites could not be reached from the
 build environment. None of the original game's content is used here, so this does not
 block development. It only limits how closely the design claims to track the original.
+
+## 14. The campaign as built (milestone 6)
+
+Four floors, defined in `js/data/floors.js` from rectangles of floor plus special tiles.
+
+| Floor | Name | What it adds |
+|---|---|---|
+| 1 | The Barrow Halls | Doors, a bronze key, a plate that opens a gate, a hidden switch to a cache, a shrine. Tomb Rats and Bone Wretches. |
+| 2 | The Drowned Ossuary | Teleporters (a sealed pocket holds a gem), spinners, a gem-socket door that needs a ruby and a sapphire, a hidden bonus cache, poison from Mire Oozes, the first Gravebound Guard. |
+| 3 | The Cinder Court | Dark (needs the Lantern Ward), hidden pit traps (a Cutpurse spots and disarms them; a Votary's Lantern Ward reveals them; otherwise you fall and are hurt, never killed), Sepulchral Spiders that web from range, Cinder Wraiths that strike the back row, an ember key, a plate-gated stairway. |
+| 4 | The Queen's Chamber | Veshara. She cannot be harmed while any of three phylactery lamps burns, so snuff each lamp (stand in front and press F). She holds her chamber, shoots bolts from range, and calls up two Bone Wretches at 66% and 33% health. Killing her ends the game. |
+
+Each of floors 1 to 3 has one optional hidden cache with bonus XP. Stairs are paired, and each
+floor remembers its own surviving monsters. Defeat restarts the current floor.
+
+Not built from the original design: Mire Oozes do not split when burned, and there is no
+one-way door yet.
+
+`tests/campaign.mjs` solves the whole dungeon from a fresh start (keys, gems, plates, switches,
+teleporters, stairs) and fails if any item, monster, shrine, staircase, lamp or the Queen is
+unreachable. `tests/dungeon.mjs` covers stairs, pits, sockets, webs, poison, wraiths and the
+boss. A scripted run through the real browser UI also completed the game.

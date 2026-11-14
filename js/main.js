@@ -1,4 +1,5 @@
-import { loadMap, DIR_NAMES } from './map.js';
+import { DIR_NAMES } from './map.js';
+import { loadCampaign } from './data/floors.js';
 import { newGame, step, turn, interact, look } from './world.js';
 import { render } from './render.js';
 import { runSetup, portraitHTML } from './setup.js';
@@ -6,8 +7,7 @@ import { heroAttack, canAct, enemyAhead, retry, alive } from './combat.js';
 import { castSpell, useQuick, rest, advance, memorizedCount } from './magic.js';
 import { SPELLS } from './data/spells.js';
 
-const map = loadMap();
-const game = newGame(map);
+const game = newGame(loadCampaign());
 const $ = id => document.getElementById(id);
 const canvas = $('view'), ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -21,7 +21,7 @@ function flushMessages() {
 }
 
 let started = false;
-const locked = () => !started || game.paused || game.defeated;
+const locked = () => !started || game.paused || game.defeated || game.won;
 
 function attack(i) {
   if (locked()) return;
@@ -65,7 +65,7 @@ function quick(i, s) {
   if (!r.ok && !['not ready', 'fallen', 'empty'].includes(r.why)) game.msgs.push(r.why);
 }
 
-function togglePause() { if (started && !game.defeated) game.paused = !game.paused; }
+function togglePause() { if (started && !game.defeated && !game.won) game.paused = !game.paused; }
 
 addEventListener('keydown', e => {
   if (!started || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -87,7 +87,7 @@ canvas.addEventListener('click', () => {
     if (i >= 0) attack(i);
   } else act('use');
 });
-$('retryBtn').addEventListener('click', () => { retry(game); flushMessages(); });
+$('retryBtn').addEventListener('click', () => { if (game.won) location.reload(); else { retry(game); flushMessages(); } });
 
 // ---- party panel: built once, then updated in place so buttons stay clickable -------------------
 let cards = [];
@@ -96,7 +96,7 @@ function buildParty() {
     <div class="hero" data-i="${i}">
       ${portraitHTML(h)}
       <div class="nm">${h.name}</div>
-      <div class="cl">${h.class} L<span class="lv"></span> · ${h.row ? 'back' : 'front'}</div>
+      <div class="cl">${h.class} L<span class="lv"></span> · ${h.row ? 'back' : 'front'}<b class="st"></b></div>
       <div class="bar"><i class="hp"></i></div><div class="hpt"></div>
       <button type="button" class="atk" data-i="${i}"><span class="cdfill"></span><span class="wl">${h.weapon}</span><kbd>${i + 1}</kbd></button>
       ${h.spellsKnown.length ? `<div class="spells">${h.spellsKnown.map(s => `<button type="button" class="spell" data-s="${s}" title="${SPELLS[s].text}"><span class="sn">${s}</span><span class="sc"></span></button>`).join('')}</div>` : ''}
@@ -123,6 +123,7 @@ function updateParty() {
     const c = cards[i], btn = c.querySelector('.atk'), can = canAct(game, i);
     c.classList.toggle('fallen', !alive(h));
     c.querySelector('.lv').textContent = h.level;
+    c.querySelector('.st').textContent = `${h.poisonMs > 0 ? ' PSN' : ''}${h.webMs > 0 ? ' WEB' : ''}`;
     c.querySelector('.hp').style.width = `${(100 * h.hp) / h.hpMax}%`;
     c.querySelector('.hpt').textContent = alive(h) ? `${h.hp}/${h.hpMax}` : 'Fallen';
     const dm = c.querySelector('.dmg'); dm.textContent = h.hurt ? h.hurt.text : ''; dm.classList.toggle('good', !!h.hurt?.good);
@@ -145,18 +146,20 @@ function updateParty() {
 }
 
 function updateOverlay() {
-  const show = game.paused || game.defeated;
+  const show = game.paused || game.defeated || game.won;
   $('overlay').hidden = !show;
-  $('overlayText').textContent = game.defeated ? 'THE PARTY HAS FALLEN' : 'PAUSED (P to resume)';
-  $('retryBtn').hidden = !game.defeated;
+  $('overlayText').textContent = game.won ? 'VICTORY!\nThe Lich Queen is destroyed.' : game.defeated ? 'THE PARTY HAS FALLEN' : 'PAUSED (P to resume)';
+  $('retryBtn').hidden = !(game.defeated || game.won);
+  $('retryBtn').textContent = game.won ? 'Play again' : 'Try again';
 }
 
 let last = 0;
 function loop(t) {
   advance(game, Math.min(100, t - last)); last = t;
   flushMessages();
-  render(ctx, map, game, t);
+  render(ctx, game.map, game, t);
   $('compass').textContent = DIR_NAMES[game.dir];
+  $('floorName').textContent = `Floor ${game.floor + 1} of ${game.floors.length}: ${game.map.name}`;
   updateParty(); updateOverlay();
   requestAnimationFrame(loop);
 }
@@ -172,5 +175,5 @@ function begin(party) {
   requestAnimationFrame(loop);
 }
 
-window.__game = { game, map, act, attack };
+window.__game = { game, get map() { return game.map; }, act, attack };
 runSetup(begin);

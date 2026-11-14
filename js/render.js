@@ -14,6 +14,7 @@ const PALETTE = {
   D:   { fill: [112, 72, 36],  side: [90, 58, 28], line: [50, 30, 14] },
   L:   { fill: [96, 64, 40],   side: [78, 52, 32], line: [40, 26, 14] },
   G:   { fill: [34, 32, 36],   side: [30, 28, 32], line: [20, 20, 24] },
+  M:   { fill: [64, 74, 96],   side: [52, 60, 80], line: [30, 36, 54] },
 };
 
 function proj(x, y, z) { return [CX + (x * FOCAL) / z, CY + (y * FOCAL) / z]; }
@@ -56,6 +57,13 @@ function frontWall(ctx, lx, z, ch, sw) {
     ctx.fillStyle = ch === 'L' ? shade([200, 170, 60], z) : shade([170, 150, 120], z);
     ctx.beginPath(); ctx.arc(hx, hy, r, 0, 7); ctx.fill();
     if (ch === 'L') ctx.fillRect(hx - r, hy + r, r * 2, r * 2.4);  // lock plate
+  } else if (ch === 'M') {                           // slab with two gem sockets
+    ctx.strokeRect(x0 + 3.5, y0 + 3.5, w - 7, h - 7);
+    for (const fx of [0.34, 0.66]) {
+      const sx = x0 + w * fx, sy = y0 + h * 0.42, r = Math.max(2, w * 0.07);
+      ctx.fillStyle = shade([14, 14, 24], z); ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7); ctx.fill();
+      ctx.strokeStyle = shade([150, 170, 220], z); ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7); ctx.stroke();
+    }
   } else {                                           // brick
     const rows = 4;
     for (let r = 1; r < rows; r++) {
@@ -67,7 +75,15 @@ function frontWall(ctx, lx, z, ch, sw) {
       }
     }
   }
-  if (sw) {                                          // wall switch: plate + lever
+  if (sw && 'lit' in sw) {                           // phylactery lamp: bracket and flame
+    const px = x0 + w * 0.5, py = y0 + h * 0.45, s = w * 0.07;
+    ctx.fillStyle = shade([50, 45, 55], z); ctx.fillRect(px - s * 1.2, py + s * 0.6, s * 2.4, s * 1.2);
+    ctx.fillStyle = shade(sw.lit ? [90, 40, 20] : [40, 40, 44], z); ctx.fillRect(px - s * 0.9, py - s * 0.6, s * 1.8, s * 1.4);
+    if (sw.lit) {
+      ctx.fillStyle = shade([255, 150, 40], z); ctx.beginPath(); ctx.ellipse(px, py - s * 1.3, s * 0.9, s * 1.5, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = shade([255, 230, 120], z); ctx.beginPath(); ctx.ellipse(px, py - s * 1.0, s * 0.45, s * 0.9, 0, 0, 7); ctx.fill();
+    }
+  } else if (sw) {                                   // wall switch: plate + lever
     const px = x0 + w * 0.5, py = y0 + h * 0.5, s = w * 0.08;
     ctx.fillStyle = shade([60, 55, 50], z); ctx.fillRect(px - s, py - s * 1.6, s * 2, s * 3.2);
     ctx.fillStyle = shade(sw.on ? [90, 200, 90] : [220, 190, 70], z);
@@ -97,6 +113,13 @@ function floorDecal(ctx, ch, z0, z1, t) {
     const pulse = 0.5 + 0.2 * Math.sin(t / 250);
     floorMark(ctx, z0, z1, 0.8, shade([40, 70, 150], zm), shade([120, 170, 255], zm));
     floorMark(ctx, z0, z1, pulse, shade([90, 140, 230], zm), null);
+  } else if (ch === '>' || ch === '<') {
+    const down = ch === '>', base = down ? [30, 26, 24] : [150, 140, 120];
+    floorMark(ctx, z0, z1, 0.9, shade(base, zm), shade([200, 190, 160], zm));
+    for (let i = 1; i < 4; i++) floorMark(ctx, z0, z1, 0.9 - i * 0.2, shade(down ? base.map(v => v + i * 8) : base.map(v => v - i * 14), zm), null);
+  } else if (ch === 'X') {
+    floorMark(ctx, z0, z1, 0.85, shade([8, 6, 5], zm), shade([90, 70, 50], zm));
+    floorMark(ctx, z0, z1, 0.5, shade([0, 0, 0], zm), null);
   } else if (ch === 'H') {
     const glow = 0.5 + 0.15 * Math.sin(t / 400);
     floorMark(ctx, z0, z1, 0.8, shade([70, 55, 20], zm), shade([240, 200, 90], zm));
@@ -145,6 +168,54 @@ function drawMonster(ctx, e, zc, t, spriteSrc) {
     circle(ctx, cx + 0.05 * u, fy - 0.27 * u + bob, 0.025 * u, '#d33');
     return 0.4 * u;
   }
+  if (e.kind === 'ooze') {
+    const sq = 1 + 0.07 * Math.sin(t / 260 + e.x * 2);
+    ellipse(ctx, cx, fy - 0.2 * u, 0.32 * u * sq, 0.2 * u / sq, c([60, 140, 78]));
+    ellipse(ctx, cx - 0.09 * u, fy - 0.28 * u, 0.1 * u, 0.055 * u, c([150, 225, 160]));
+    circle(ctx, cx - 0.1 * u, fy - 0.2 * u, 0.035 * u, '#102'); circle(ctx, cx + 0.1 * u, fy - 0.2 * u, 0.035 * u, '#102');
+    return 0.42 * u;
+  }
+  if (e.kind === 'spider') {
+    ctx.strokeStyle = c([60, 40, 70]); ctx.lineWidth = Math.max(1, 0.035 * u);
+    for (const sd of [-1, 1]) for (let i = 0; i < 4; i++) {
+      const lx = cx + sd * 0.14 * u, ly = fy - 0.2 * u + (i - 1.5) * 0.02 * u;
+      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(cx + sd * (0.32 + i * 0.05) * u, ly - 0.14 * u); ctx.lineTo(cx + sd * (0.4 + i * 0.06) * u, fy); ctx.stroke();
+    }
+    ellipse(ctx, cx, fy - 0.2 * u + bob, 0.2 * u, 0.15 * u, c([70, 46, 86]));
+    circle(ctx, cx, fy - 0.3 * u + bob, 0.1 * u, c([90, 60, 104]));
+    for (const dx of [-0.045, -0.015, 0.015, 0.045]) circle(ctx, cx + dx * u, fy - 0.32 * u + bob, 0.014 * u, '#f33');
+    return 0.45 * u;
+  }
+  if (e.kind === 'guard') {
+    const steel = c([120, 126, 140]), dark2 = c([60, 64, 76]);
+    ctx.fillStyle = dark2; ctx.fillRect(cx - 0.17 * u, fy - 0.45 * u, 0.12 * u, 0.45 * u); ctx.fillRect(cx + 0.05 * u, fy - 0.45 * u, 0.12 * u, 0.45 * u);
+    ctx.fillStyle = steel; ctx.fillRect(cx - 0.26 * u, fy - 0.95 * u + bob, 0.52 * u, 0.55 * u);                 // breastplate
+    ctx.fillStyle = dark2; ctx.fillRect(cx - 0.05 * u, fy - 0.95 * u + bob, 0.1 * u, 0.55 * u);
+    ctx.fillStyle = steel; ctx.fillRect(cx - 0.12 * u, fy - 1.18 * u + bob, 0.24 * u, 0.24 * u);                  // helm
+    ctx.fillStyle = shade([20, 255, 140], zc); ctx.fillRect(cx - 0.08 * u, fy - 1.08 * u + bob, 0.16 * u, 0.03 * u);   // glowing visor slit
+    ctx.fillStyle = c([90, 70, 50]); ctx.fillRect(cx - 0.42 * u, fy - 0.95 * u + bob, 0.15 * u, 0.4 * u);          // shield
+    ctx.fillStyle = steel; ctx.fillRect(cx + 0.28 * u, fy - 1.1 * u + bob, 0.05 * u, 0.7 * u);                      // blade
+    return 1.2 * u;
+  }
+  if (e.kind === 'wraith' || e.kind === 'queen') {
+    const queen = e.kind === 'queen', sway = Math.sin(t / 300 + e.x) * 0.03 * u, hgt = queen ? 1.35 : 1.15;
+    ctx.save();
+    if (!queen) ctx.globalAlpha = 0.78;
+    if (queen) { const g = ctx.createRadialGradient(cx, fy - hgt * 0.55 * u, 0.1 * u, cx, fy - hgt * 0.55 * u, 0.9 * u);
+      g.addColorStop(0, 'rgba(160,90,255,0.35)'); g.addColorStop(1, 'rgba(160,90,255,0)'); ctx.fillStyle = g; ctx.fillRect(cx - u, fy - 1.6 * u, 2 * u, 1.7 * u); }
+    const robe = queen ? c([70, 30, 100]) : c([110, 50, 40]);
+    poly(ctx, [[cx - 0.1 * u + sway, fy - (hgt - 0.1) * u], [cx + 0.1 * u + sway, fy - (hgt - 0.1) * u], [cx + 0.34 * u, fy], [cx - 0.34 * u, fy]], robe, null);
+    circle(ctx, cx + sway, fy - (hgt - 0.05) * u, 0.13 * u, queen ? c([200, 190, 215]) : c([30, 14, 12]));
+    const eye = queen ? [190, 255, 255] : [255, 160, 60];
+    circle(ctx, cx - 0.05 * u + sway, fy - (hgt - 0.05) * u, 0.025 * u, shade(eye, zc)); circle(ctx, cx + 0.05 * u + sway, fy - (hgt - 0.05) * u, 0.025 * u, shade(eye, zc));
+    if (queen) {                                                                                                  // crown
+      ctx.fillStyle = shade([240, 200, 70], zc);
+      for (let i = -2; i <= 2; i++) ctx.fillRect(cx + i * 0.05 * u - 0.012 * u + sway, fy - (hgt + 0.2) * u + (i % 2 ? 0 : 0.03 * u), 0.025 * u, 0.1 * u);
+      ctx.fillRect(cx - 0.13 * u + sway, fy - (hgt + 0.1) * u, 0.26 * u, 0.04 * u);
+    }
+    ctx.restore();
+    return (hgt + (queen ? 0.3 : 0.15)) * u;
+  }
   // wretch: a slumped skeletal figure
   const bone = c([200, 190, 165]), dark = shade([20, 16, 12], zc);
   ctx.fillStyle = bone;
@@ -180,7 +251,7 @@ function drawEnemies(ctx, p, cx, cy, z0, z1, t) {
 }
 
 export function render(ctx, map, p, t = 0) {
-  reach = p.lightMs > 0 ? DEPTH + 4 : DEPTH + 1.2;
+  reach = p.lightMs > 0 ? DEPTH + 4 : (map.dark ? 2.6 : DEPTH + 1.2);   // dark floors need the Lantern Ward
   const g1 = ctx.createLinearGradient(0, 0, 0, CY);
   g1.addColorStop(0, '#0a0806'); g1.addColorStop(1, '#2b231a');
   ctx.fillStyle = g1; ctx.fillRect(0, 0, W, CY);
@@ -195,6 +266,8 @@ export function render(ctx, map, p, t = 0) {
   const solid = (f, r) => SOLID.has(tile(f, r));
   const switchOn = (f, r) => {
     const [cx, cy] = cell(f, r), face = (p.dir + 2) % 4;
+    const lamp = map.lamps.find(l => l.x === cx && l.y === cy && l.face === face);
+    if (lamp) return lamp;
     const s = map.switches.find(s => s.x === cx && s.y === cy && s.face === face && s.found);
     return s || null;
   };
@@ -206,10 +279,12 @@ export function render(ctx, map, p, t = 0) {
     }
     if (solid(k, 0)) continue;
     const [cx, cy] = cell(k, 0);
-    floorDecal(ctx, tile(k, 0), z0, z1, t);
+    const ch = tile(k, 0);
+    floorDecal(ctx, ch === 'X' && !map.traps[`${cx},${cy}`]?.found ? '.' : ch, z0, z1, t);
     const item = map.items.find(i => i.x === cx && i.y === cy);
     if (item) {
-      const col = { key: [230, 200, 70], ration: [170, 120, 70], potion: item.id === 'return' ? [200, 90, 220] : [220, 70, 70] }[item.kind] || [230, 200, 70];
+      const col = { key: [230, 200, 70], ration: [170, 120, 70], potion: item.id === 'return' ? [200, 90, 220] : item.id === 'antidote' ? [90, 210, 120] : [220, 70, 70],
+        gem: item.id === 'redgem' ? [230, 40, 70] : [60, 120, 255], xp: [255, 240, 180] }[item.kind] || [230, 200, 70];
       floorMark(ctx, z0, z1, 0.25, shade(col, (z0 + z1) / 2), shade([255, 255, 255].map((v, i) => col[i] * 0.5), (z0 + z1) / 2));
     }
     if (solid(k, -1)) sideWall(ctx, -0.5, z0, z1, tile(k, -1));

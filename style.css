@@ -69,3 +69,7 @@ body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.3 "Courier 
 .hero .dmg.good { color:#7be07b; }
 #party.targeting .hero[data-i]:not(.fallen) { cursor:crosshair; outline:2px dashed #b49cf0; }
 #status { font-size:12px; opacity:.9; }
+
+#floorName { align-self:center; font-size:13px; letter-spacing:1px; opacity:.9; min-width:150px; }
+.hero .st { color:#9de07a; margin-left:4px; font-size:11px; }
+#overlayText { white-space:pre-line; }

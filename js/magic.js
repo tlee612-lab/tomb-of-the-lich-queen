@@ -2,7 +2,7 @@
 import { DX, DY, isSolid } from './map.js';
 import { MONSTERS } from './data/monsters.js';
 import { SPELLS } from './data/spells.js';
-import { alive, enemyAhead, enemyAt, distances, createMonster, kill, dice, addFx, tick } from './combat.js';
+import { alive, enemyAhead, enemyAt, distances, createMonster, kill, dice, addFx, tick, strike } from './combat.js';
 import { loadoutFor } from './spellbook.js';
 
 const mod = v => Math.floor((v - 10) / 2);
@@ -41,10 +41,12 @@ export function castSpell(g, i, name, targetIdx) {
 
   if (sp.dmg) {
     const dmg = Math.max(1, dice(g, sp.dmg) + mod(h.attrs[sp.stat]));
-    target.hp -= dmg; target.flash = 150;
-    say(g, `${h.name}'s ${name} burns the ${target.name} for ${dmg}.`);
-    addFx(g, target, String(dmg), '#ff9a3c');
-    if (target.hp <= 0) kill(g, target);
+    if (!strike(g, target, dmg)) say(g, `${h.name}'s ${name} fizzles against the Queen's ward!`);
+    else {
+      say(g, `${h.name}'s ${name} burns the ${target.name} for ${dmg}.`);
+      addFx(g, target, String(dmg), '#ff9a3c');
+      if (target.hp <= 0) kill(g, target);
+    }
   } else if (sp.slowMs) {
     target.slowMs = sp.slowMs;
     say(g, `${h.name}'s ${name} slows the ${target.name}.`);
@@ -59,7 +61,11 @@ export function castSpell(g, i, name, targetIdx) {
     for (const s of g.map.switches) {
       if (!s.found && Math.abs(s.x - g.x) + Math.abs(s.y - g.y) <= sp.reveal) { s.found = true; found++; }
     }
-    say(g, found ? `${h.name} casts ${name}. A hidden switch shimmers into view!` : `${h.name} casts ${name}. The way brightens.`);
+    for (const [k, trap] of Object.entries(g.map.traps)) {
+      const [tx, ty] = k.split(',').map(Number);
+      if (!trap.found && g.map.grid[ty][tx] === 'X' && Math.abs(tx - g.x) + Math.abs(ty - g.y) <= sp.reveal) { trap.found = true; found++; }
+    }
+    say(g, found ? `${h.name} casts ${name}. Hidden things shimmer into view!` : `${h.name} casts ${name}. The way brightens.`);
   }
   return { ok: true };
 }
@@ -75,6 +81,9 @@ export function useQuick(g, i, slot) {
     if (h.hp >= h.hpMax) return { ok: false, why: `${h.name} is unhurt.` };
     const gain = Math.min(12, h.hpMax - h.hp);
     h.hp += gain; hurtText(h, `+${gain}`); say(g, `${h.name} drinks a healing potion (+${gain}).`);
+  } else if (item.id === 'antidote') {
+    if (!h.poisonMs) return { ok: false, why: `${h.name} is not poisoned.` };
+    h.poisonMs = 0; say(g, `${h.name} drinks an antidote. The poison fades.`);
   } else if (item.id === 'return') {
     const fallen = g.party.find(x => !alive(x));
     if (!fallen) return { ok: false, why: 'Nobody has fallen.' };
@@ -92,10 +101,11 @@ export function useShrine(g) {
   if (!s) return false;
   if (s.charges <= 0) { say(g, 'The shrine is spent. Its light has gone out.'); return true; }
   const fallen = g.party.filter(h => !alive(h));
-  if (!fallen.length && g.party.every(h => h.hp >= h.hpMax)) { say(g, 'The shrine hums, but you need nothing from it.'); return true; }
+  if (!fallen.length && g.party.every(h => h.hp >= h.hpMax && !h.poisonMs)) { say(g, 'The shrine hums, but you need nothing from it.'); return true; }
   s.charges--;
   for (const h of g.party) {
     if (!alive(h)) h.hp = Math.ceil(h.hpMax / 2); else h.hp = Math.min(h.hpMax, h.hp + 10);
+    h.poisonMs = 0; h.webMs = 0;
     hurtText(h, '+');
   }
   say(g, `The shrine blazes. ${fallen.length ? fallen.map(h => h.name).join(', ') + ' rise' + (fallen.length === 1 ? 's' : '') + '! ' : ''}The party is mended.${s.charges ? '' : ' The light fades.'}`);
@@ -122,7 +132,7 @@ export function rest(g) {
     if (cells.length) spawn = cells[Math.floor(g.rng() * cells.length)];
   }
   const factor = spawn ? 0.5 : 1;
-  for (const h of g.party.filter(alive)) h.hp = Math.min(h.hpMax, h.hp + Math.ceil(h.hpMax * REST_HEAL * factor));
+  for (const h of g.party.filter(alive)) { h.hp = Math.min(h.hpMax, h.hp + Math.ceil(h.hpMax * REST_HEAL * factor)); if (!spawn) h.poisonMs = 0; }
   if (spawn) {
     g.enemies.push(createMonster('tomb_rat', spawn[0], spawn[1]));
     say(g, 'Something scrabbles in the dark. Your rest is cut short!');
@@ -137,7 +147,7 @@ export function rest(g) {
 
 export function advance(g, dt) {
   tick(g, dt);
-  if (g.paused || g.defeated) return;
+  if (g.paused || g.defeated || g.won) return;
   if (g.lightMs > 0) g.lightMs = Math.max(0, g.lightMs - dt);
 
   g.hungerMs += dt;
@@ -164,7 +174,7 @@ export function advance(g, dt) {
       g.sanctMs -= SANCTIFY_MS;
       for (const e of g.enemies) {
         if (e.hp <= 0 || !MONSTERS[e.type].undead || Math.abs(e.x - g.x) + Math.abs(e.y - g.y) !== 1) continue;
-        e.hp -= votary.level; e.flash = 150;
+        if (!strike(g, e, votary.level)) continue;
         say(g, `Sanctify burns the ${e.name} for ${votary.level}.`);
         addFx(g, e, String(votary.level), '#ffe27a');
         if (e.hp <= 0) kill(g, e);

@@ -18,7 +18,8 @@ Spells: click a spell on a caster's card (enemy spells fire at the monster in fr
     npm test
 
 Runs the rules tests: the map walkthrough (`js/world.js`), party and hero creation, combat
-(`js/combat.js`), and spells, resting, food, potions and shrines (`js/magic.js`).
+(`js/combat.js`), spells, resting, food, potions and shrines (`js/magic.js`), the solvability of the whole campaign
+(`tests/campaign.mjs`), and the dungeon rules and boss fight (`tests/dungeon.mjs`).
 
 ## Using your own data and graphics
 
@@ -28,3 +29,4 @@ Runs the rules tests: the map walkthrough (`js/world.js`), party and hero creati
 - Monsters: `js/data/monsters.js`; weapons: `js/data/weapons.js`. Set `sprite: 'assets/monsters/x.png'` on a
   monster to replace the drawn placeholder.
 - Spells: `js/data/spells.js`. Spell slots by class and level: `js/spellbook.js`.
+- Floors: `js/data/floors.js` (rectangles of floor plus special tiles; the campaign test checks every floor can be finished).

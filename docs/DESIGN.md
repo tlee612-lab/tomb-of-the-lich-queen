@@ -244,7 +244,7 @@ Four floors, defined in `js/data/floors.js` from rectangles of floor plus specia
 | 1 | The Barrow Halls | Doors, a bronze key, a plate that opens a gate, a hidden switch to a cache, a shrine. Tomb Rats and Bone Wretches. |
 | 2 | The Drowned Ossuary | Teleporters (a sealed pocket holds a gem), spinners, a gem-socket door that needs a ruby and a sapphire, a hidden bonus cache, poison from Mire Oozes, the first Gravebound Guard. |
 | 3 | The Cinder Court | Dark (needs the Lantern Ward), hidden pit traps (a Cutpurse spots and disarms them; a Votary's Lantern Ward reveals them; otherwise you fall and are hurt, never killed), Sepulchral Spiders that web from range, Cinder Wraiths that strike the back row, an ember key, a plate-gated stairway. |
-| 4 | The Queen's Chamber | Veshara. She cannot be harmed while any of three phylactery lamps burns, so snuff each lamp (stand in front and press F). She holds her chamber, shoots bolts from range, and calls up two Bone Wretches at 66% and 33% health. Killing her ends the game. |
+| 4 | The Queen's Chamber | Veshara. She cannot be harmed while any of three phylactery lamps burns, so snuff each lamp (stand in front and press F). While any lamp burns she sits her throne and shoots bolts from range; once all three are dark she rises, hunts within her chamber, and calls up three Bone Wretches at 66% and 33% health. Killing her ends the game. |
 
 Each of floors 1 to 3 has one optional hidden cache with bonus XP. Stairs are paired, and each
 floor remembers its own surviving monsters. Defeat restarts the current floor.
@@ -266,7 +266,7 @@ boss. A scripted run through the real browser UI also completed the game.
   browser with storage blocked falls back to saves that last until the tab closes. The autosave runs
   every 30 seconds, on every floor change and after resting. Defeat offers to load it, or to restart
   the floor. Starting a new game does not touch the old autosave for its first 30 seconds.
-- **Journal (J):** inscriptions on the walls (nine across the four floors) are recorded the first time
+- **Journal (J):** inscriptions on the walls (ten across the four floors) are recorded the first time
   they are seen, grouped by floor, and saved with the game. They carry the real clues: the bronze key,
   the hidden switch, the two gems, the pits, and the Queen's lamps.
 - **Sound (M toggles, remembered):** synthesized with the Web Audio API, no asset files: steps, hits,
@@ -283,3 +283,7 @@ and an optional real-browser run, `tests/browser/playthrough.cjs`, that plays th
 
 Not done: I could not listen to the sound, so its mix and volume are untuned. There is no touch-specific
 layout beyond the on-screen movement pad.
+
+## 16. Balance
+
+Difficulty was tuned with a simulator that plays the real game thousands of times. See `docs/BALANCE.md` for the method, what it found, what changed, and what is still open (the Cutpurse and the mage are replaceable, the healer is not, and nobody has played it yet).

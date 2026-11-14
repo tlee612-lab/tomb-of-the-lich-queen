@@ -34,3 +34,7 @@ Optional: `tests/browser/playthrough.cjs` plays the whole game in a real browser
   monster to replace the drawn placeholder.
 - Spells: `js/data/spells.js`. Spell slots by class and level: `js/spellbook.js`.
 - Floors: `js/data/floors.js` (rectangles of floor plus special tiles; the campaign test checks every floor can be finished).
+
+## Balance
+
+`npm run balance` plays the real game with a seeded bot and prints win rates and resource use for several player styles and parties. The method, results and open problems are in [docs/BALANCE.md](docs/BALANCE.md).

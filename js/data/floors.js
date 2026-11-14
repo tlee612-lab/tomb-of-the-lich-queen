@@ -45,6 +45,7 @@ const FLOORS = [
     switches: [{ x: 14, y: 8, face: 3, hidden: true, targets: [[14, 9]] }],
     inscriptions: [
       { x: 8, y: 0, face: 2, title: 'The Door of the Deep', text: 'Two eyes stare from the door of the deep. A ruby lies in the pool-hall. A sapphire waits where the walls forget you.' },
+      { x: 12, y: 9, face: 1, title: 'The Reliquary', text: 'Before the door of the deep, the east wall keeps a lever for those who look.' },
       { x: 6, y: 5, face: 2, title: 'The Blue Stone', text: 'Step on the blue stone and be carried. The tide turns the long hall, so trust the walls and not your feet.' },
     ],
     shrines: [{ x: 10, y: 3, charges: 2 }],

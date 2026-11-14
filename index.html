@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tomb of the Lich Queen</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main id="game">
+  <div id="viewframe"><canvas id="view" width="448" height="300"></canvas></div>
+  <aside id="party"></aside>
+  <div id="controls">
+    <div id="compass">N</div>
+    <div id="pad">
+      <button data-act="turnL">&#8630;</button>
+      <button data-act="fwd">&#9650;</button>
+      <button data-act="turnR">&#8631;</button>
+      <button data-act="strL">&#9664;</button>
+      <button data-act="back">&#9660;</button>
+      <button data-act="strR">&#9654;</button>
+    </div>
+    <div id="log"></div>
+  </div>
+</main>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

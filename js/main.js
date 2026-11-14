@@ -334,7 +334,8 @@ function loop(t) {
 }
 function ensureLoop() { if (!looping) { looping = true; last = performance.now(); requestAnimationFrame(loop); } }
 
-const MISSION = 'The Lich Queen Veshara has taken a princess, Elowen, and keeps her alive in the deepest chamber of this tomb. Descend four floors. Solve what bars the way, rest when you must, and watch your food. In the Queen\'s chamber you will find three phylactery lamps; while any burns she cannot be harmed, so snuff them all, destroy her, and free the princess. Prisoners elsewhere in the tomb may be worth freeing too.';
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});   // lets Chrome offer a real "Install app"
+const MISSION ='The Lich Queen Veshara has taken a princess, Elowen, and keeps her alive in the deepest chamber of this tomb. Descend four floors. Solve what bars the way, rest when you must, and watch your food. In the Queen\'s chamber you will find three phylactery lamps; while any burns she cannot be harmed, so snuff them all, destroy her, and free the princess. Prisoners elsewhere in the tomb may be worth freeing too.';
 function begin(party, difficulty = 'normal') {
   game.party = party;
   setDifficulty(game, difficulty, { fresh: true });

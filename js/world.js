@@ -10,7 +10,7 @@ export function newGame(mapOrFloors, rng = Math.random) {
   for (const f of floors) f.enemies = buildEnemies(f);
   const map = floors[0];
   return { floors, floor: 0, map, x: map.start.x, y: map.start.y, dir: map.start.dir, bag: [], msgs: [], rng,
-    party: [], enemies: map.enemies, fx: [], paused: false, defeated: false, won: false,
+    party: [], enemies: map.enemies, fx: [], paused: false, defeated: false, won: false, journal: [],
     rations: 4, hungerMs: 0, starving: false, starveMs: 0, lightMs: 0, sanctMs: 0 };
 }
 
@@ -34,8 +34,26 @@ export function changeFloor(g, to) {
   look(g);
 }
 
-// Passive search: switches directly ahead are noticed, and a living Cutpurse spots pits in the next cell.
+// An inscription is read the first time you stand in front of it, or face it from up to two cells away.
+function seesInscription(g, ins) {
+  if (g.x === ins.x + DX[ins.face] && g.y === ins.y + DY[ins.face]) return true;
+  if (ins.face !== (g.dir + 2) % 4) return false;
+  for (let k = 1; k <= 2; k++) {
+    const x = g.x + DX[g.dir] * k, y = g.y + DY[g.dir] * k;
+    if (x === ins.x && y === ins.y) return true;
+    if (isSolid(g.map, x, y)) return false;
+  }
+  return false;
+}
+
+// Passive search: inscriptions are read, switches directly ahead are noticed, and a living Cutpurse spots pits.
 export function look(g) {
+  for (const ins of g.map.inscriptions) {
+    if (ins.seen || !seesInscription(g, ins)) continue;
+    ins.seen = true;
+    g.journal.push({ floor: g.floor, title: ins.title, text: ins.text });
+    say(g, `You read an inscription, "${ins.title}". (Saved to your journal: J)`);
+  }
   const [ax, ay] = ahead(g);
   for (const s of g.map.switches) {
     if (!s.found && s.x === ax && s.y === ay && s.face === (g.dir + 2) % 4) {

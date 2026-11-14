@@ -9,6 +9,8 @@
 <body>
 <section id="setup" hidden>
   <h1>Tomb of the Lich Queen</h1>
+  <div id="continue" hidden><h2>Continue</h2><div id="continueList"></div><div id="continueErr" role="alert"></div><p class="note">A new game starts saving over the autosave after 30 seconds. Use a numbered slot (Esc, then Save) to keep a run.</p></div>
+  <h2>New game</h2>
   <p>Choose your party of four. The first two stand in the front row, the last two in the back.</p>
   <div id="slots"></div>
   <details id="creator">
@@ -28,7 +30,7 @@
 </section>
 <main id="game" hidden>
   <div id="viewframe"><canvas id="view" width="448" height="300"></canvas>
-    <div id="overlay" hidden><div id="overlayText"></div><button id="retryBtn" type="button" hidden>Try again</button></div></div>
+    <div id="overlay" hidden><div id="overlayText"></div><button id="loadBtn" type="button" hidden>Load autosave</button><button id="retryBtn" type="button" hidden>Try again</button></div></div>
   <aside id="party"></aside>
   <div id="controls">
     <div id="compass">N</div>
@@ -41,10 +43,21 @@
       <button data-act="back">&#9660;</button>
       <button data-act="strR">&#9654;</button>
     </div>
-    <button id="restBtn" type="button">Rest (R)</button>
+    <div id="sys">
+      <button id="restBtn" type="button">Rest (R)</button>
+      <button id="menuBtn" type="button">Menu (Esc)</button>
+      <button id="journalBtn" type="button">Journal (J)</button>
+      <button id="soundBtn" type="button">Sound: on (M)</button>
+    </div>
     <div id="log"></div>
   </div>
 </main>
+<div id="modal" hidden role="dialog" aria-modal="true" aria-label="Game menu">
+  <div id="modalBox">
+    <div id="tabs"><button type="button" data-tab="menu">Menu</button><button type="button" data-tab="journal">Journal</button><button type="button" data-tab="help">Help</button><button type="button" id="closeModal">Close (Esc)</button></div>
+    <div id="tabBody"></div>
+  </div>
+</div>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

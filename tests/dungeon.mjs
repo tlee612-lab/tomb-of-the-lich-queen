@@ -154,6 +154,26 @@ assert.equal(g.won, true); assert.match(g.msgs.join('|'), /You have won/);
 assert.equal(g.enemies.length, 0, 'her summoned dead fall with her'); assert.equal(g.fx.length, 0, 'floating text is cleared');
 const t0 = g.party[0].cd; tick(g, 5000); advance(g, 5000); assert.equal(g.party[0].cd, t0, 'the world freezes after victory');
 
+// --- inscriptions and the journal ---------------------------------------------------------------------------------------------
+g = game(); assert.equal(g.journal.length, 0);
+goto(g, 0, 7, 3, S); g.x = 7; g.y = 3; g.dir = E;                    // beside the plaque at (7,0)? not yet: two cells south of it
+look(g); assert.equal(g.journal.length, 0, 'not in front of it, not facing it');
+g.x = 7; g.y = 2; g.dir = N; look(g);                                // facing north, wall two cells ahead
+assert.equal(g.journal.length, 1); assert.equal(g.journal[0].title, 'The First Hall'); assert.equal(g.journal[0].floor, 0);
+assert.match(g.msgs.at(-1), /journal/);
+look(g); step(g, 1, 0); assert.equal(g.journal.length, 1, 'each inscription is recorded once');
+g.x = 9; g.y = 6; g.dir = E; look(g);                                // standing in front of the plaque at (9,5) without facing it
+assert.equal(g.journal.length, 2); assert.equal(g.journal[1].title, 'A Patient Hand');
+g.x = 11; g.y = 8; g.dir = N; look(g);                               // the shrine plaque at (10,9) faces east, onto (11,9): not read from (11,8)
+assert.equal(g.journal.length, 2);
+g.x = 11; g.y = 9; g.dir = N; look(g); assert.equal(g.journal.length, 3, 'standing on the cell it faces counts');
+goto(g, 3, 7, 10, N); look(g); assert.equal(g.journal.at(-1).floor, 3, 'arriving on the stairs reads the Queen\'s warning');
+g.x = 6; g.y = 4; g.dir = N; look(g);
+assert.equal(new Set(g.journal.map(j => j.title)).size, g.journal.length, 'no duplicates');
+// a plaque behind a closed door is not read through it
+g = game(); goto(g, 0, 7, 3, N); g.map.grid[1][7] = 'D'; g.x = 7; g.y = 3; look(g);
+assert.equal(g.journal.length, 0, 'a solid cell in the way hides the wall behind it');
+
 // --- retry stays on the current floor ---------------------------------------------------------------------------------------
 g = game(); goto(g, 2, 14, 2, E);
 g.party.forEach(h => { h.hp = 0; }); tick(g, 10); assert.equal(g.defeated, true);

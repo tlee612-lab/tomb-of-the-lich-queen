@@ -12,6 +12,11 @@ const FLOORS = [
     locks: { '10,2': 'bronze' },
     plates: [{ x: 12, y: 2, targets: [[13, 4]] }],
     switches: [{ x: 4, y: 6, face: 1, hidden: true, targets: [[4, 8]] }],
+    inscriptions: [
+      { x: 7, y: 0, face: 2, title: 'The First Hall', text: 'Beneath the hill the Queen keeps her dead. The first lock east of this hall wants a bronze key, and the key sleeps to the south.' },
+      { x: 9, y: 5, face: 2, title: 'A Patient Hand', text: 'A patient hand finds what the eye cannot. Test the west wall of this room.' },
+      { x: 10, y: 9, face: 1, title: 'The Shrine', text: 'The shrine remembers the fallen. Pray upon it twice, and no more.' },
+    ],
     shrines: [{ x: 11, y: 9, charges: 2 }],
     stairs: [{ x: 12, y: 12, to: { floor: 1, x: 1, y: 1, dir: 1 } }],
     items: [
@@ -38,6 +43,10 @@ const FLOORS = [
     teleports: [{ x: 6, y: 6, to: { x: 3, y: 7, dir: 1 } }, { x: 1, y: 6, to: { x: 6, y: 7, dir: 1 } }],
     sockets: { '13,10': ['redgem', 'bluegem'] },
     switches: [{ x: 14, y: 8, face: 3, hidden: true, targets: [[14, 9]] }],
+    inscriptions: [
+      { x: 8, y: 0, face: 2, title: 'The Door of the Deep', text: 'Two eyes stare from the door of the deep. A ruby lies in the pool-hall. A sapphire waits where the walls forget you.' },
+      { x: 6, y: 5, face: 2, title: 'The Blue Stone', text: 'Step on the blue stone and be carried. The tide turns the long hall, so trust the walls and not your feet.' },
+    ],
     shrines: [{ x: 10, y: 3, charges: 2 }],
     stairs: [{ x: 1, y: 1, to: { floor: 0, x: 12, y: 12, dir: 0 } }, { x: 13, y: 12, to: { floor: 2, x: 1, y: 1, dir: 1 } }],
     items: [
@@ -65,6 +74,10 @@ const FLOORS = [
     locks: { '10,8': 'ember' },
     plates: [{ x: 13, y: 9, targets: [[7, 11]] }],
     switches: [{ x: 17, y: 2, face: 3, hidden: true, targets: [[13, 4]] }],
+    inscriptions: [
+      { x: 7, y: 1, face: 2, title: 'The Narrow Way', text: 'Pits wait in the narrow way. A quick-fingered thief, or the glow of a lantern, will find them.' },
+      { x: 14, y: 0, face: 2, title: 'The Spiders', text: 'The spiders guard an ember. The east wall remembers a lever.' },
+    ],
     shrines: [{ x: 11, y: 10, charges: 2 }],
     stairs: [{ x: 1, y: 1, to: { floor: 1, x: 13, y: 12, dir: 0 } }, { x: 7, y: 12, to: { floor: 3, x: 7, y: 10, dir: 0 } }],
     items: [
@@ -87,6 +100,9 @@ const FLOORS = [
     name: "The Queen's Chamber", w: 15, h: 13, start: { x: 7, y: 10, dir: 0 },
     carve: [[3, 1, 11, 4], [7, 5, 7, 8], [6, 9, 8, 10]],
     set: { '7,10': '<', '7,7': 'H' },
+    inscriptions: [
+      { x: 7, y: 11, face: 0, title: 'The Three Flames', text: 'Three flames feed the Queen\'s undeath. While any one burns, no blade, spell or prayer will harm her.' },
+    ],
     shrines: [{ x: 7, y: 7, charges: 2 }],
     lamps: [{ x: 2, y: 2, face: 1 }, { x: 12, y: 2, face: 3 }, { x: 7, y: 0, face: 2 }],
     stairs: [{ x: 7, y: 10, to: { floor: 2, x: 7, y: 12, dir: 0 } }],

@@ -41,6 +41,7 @@ export function buildMap(spec) {
     teleports: copy(spec.teleports) || [], monsters: copy(spec.monsters) || [], shrines: copy(spec.shrines) || [],
     stairs: copy(spec.stairs) || [], sockets: copy(spec.sockets) || {},
     lamps: (copy(spec.lamps) || []).map(l => ({ ...l, lit: true })), traps,
+    inscriptions: (copy(spec.inscriptions) || []).map(i => ({ ...i, seen: false })),
   };
 }
 

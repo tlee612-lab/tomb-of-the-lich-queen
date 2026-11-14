@@ -19,11 +19,21 @@ export function portraitHTML(h) {
     : `<div class="portrait">${h.name[0].toUpperCase()}</div>`;
 }
 
-export function runSetup(onStart) {
+export function runSetup(onStart, { saves = [], onLoad = null } = {}) {
   const custom = loadCustom();
   const heroes = () => [...rosterHeroes(), ...custom];
   let choice = quickStartParty().map(h => h.id);
   $('setup').hidden = false;
+
+  const usable = saves.filter(s => s.info && !s.info.damaged);
+  if (onLoad && usable.length) {                                // Continue: load a save instead of picking a party
+    $('continue').hidden = false;
+    $('continueList').innerHTML = usable.map(s => `<button type="button" data-slot="${s.slot}">${s.slot === 'auto' ? 'Autosave' : 'Slot ' + s.slot}: ${s.info.floorName} · ${s.info.party}</button>`).join('');
+    $('continueList').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      const slot = b.dataset.slot === 'auto' ? 'auto' : +b.dataset.slot, r = onLoad(slot);
+      if (r.ok) $('setup').hidden = true; else $('continueErr').textContent = r.why;
+    }));
+  }
 
   function drawSlots() {
     const all = heroes();

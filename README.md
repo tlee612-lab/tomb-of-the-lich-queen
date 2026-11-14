@@ -10,7 +10,8 @@ No build step. Serve the folder and open it:
 then visit http://localhost:8000.
 
 Controls: W/S move, A/D sidestep, Q/E turn, F / Space / click the view to use what is in front.
-Click a monster in front of you, or press 1-4, to attack with that hero. P pauses.
+Click a monster in front of you, or press 1-4, to attack with that hero. P pauses. Esc opens the menu (save, load,
+journal, help), J the journal, M toggles sound.
 Spells: click a spell on a caster's card (enemy spells fire at the monster in front; ally spells then ask you to click a hero). R or the Rest button rests. F on a shrine prays.
 
 ## Test
@@ -19,7 +20,10 @@ Spells: click a spell on a caster's card (enemy spells fire at the monster in fr
 
 Runs the rules tests: the map walkthrough (`js/world.js`), party and hero creation, combat
 (`js/combat.js`), spells, resting, food, potions and shrines (`js/magic.js`), the solvability of the whole campaign
-(`tests/campaign.mjs`), and the dungeon rules and boss fight (`tests/dungeon.mjs`).
+(`tests/campaign.mjs`), the dungeon rules, boss fight and journal (`tests/dungeon.mjs`), saving (`tests/save.mjs`), and sound and animation
+(`tests/feel.mjs`).
+
+Optional: `tests/browser/playthrough.cjs` plays the whole game in a real browser (needs Playwright; see its header).
 
 ## Using your own data and graphics
 

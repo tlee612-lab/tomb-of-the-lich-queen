@@ -7,7 +7,9 @@ const CX = W / 2, CY = H / 2 + 6;
 const FOCAL = 230;
 const HALF_H = 0.55;     // wall half-height in world units
 const DEPTH = 4;         // cells ahead drawn
-const edge = k => k + 0.45;   // distance of the near edge of cell k
+const NEAR = 0.45;           // the near edge of the cell you stand in; nothing nearer is drawn
+let camZ = 0;                // camera offset in cells while a step animates (see js/anim.js)
+const edge = k => k + NEAR + camZ;   // distance of the near edge of cell k
 
 const PALETTE = {
   '#': { fill: [120, 100, 78], side: [96, 80, 62], line: [60, 48, 36] },
@@ -75,7 +77,12 @@ function frontWall(ctx, lx, z, ch, sw) {
       }
     }
   }
-  if (sw && 'lit' in sw) {                           // phylactery lamp: bracket and flame
+  if (sw && sw.plaque) {                             // inscription: a small parchment plaque
+    const px = x0 + w * 0.5, py = y0 + h * 0.45, pw = w * 0.2, ph = h * 0.28;
+    ctx.fillStyle = shade([205, 185, 140], z); ctx.fillRect(px - pw / 2, py - ph / 2, pw, ph);
+    ctx.fillStyle = shade([95, 72, 40], z);
+    for (let i = 0; i < 4; i++) ctx.fillRect(px - pw * 0.38, py - ph * 0.34 + i * ph * 0.22, pw * (i === 3 ? 0.4 : 0.76), Math.max(1, ph * 0.05));
+  } else if (sw && 'lit' in sw) {                    // phylactery lamp: bracket and flame
     const px = x0 + w * 0.5, py = y0 + h * 0.45, s = w * 0.07;
     ctx.fillStyle = shade([50, 45, 55], z); ctx.fillRect(px - s * 1.2, py + s * 0.6, s * 2.4, s * 1.2);
     ctx.fillStyle = shade(sw.lit ? [90, 40, 20] : [40, 40, 44], z); ctx.fillRect(px - s * 0.9, py - s * 0.6, s * 1.8, s * 1.4);
@@ -250,7 +257,8 @@ function drawEnemies(ctx, p, cx, cy, z0, z1, t) {
   }
 }
 
-export function render(ctx, map, p, t = 0) {
+export function render(ctx, map, p, t = 0, view = {}) {
+  camZ = view.cz || 0;
   reach = p.lightMs > 0 ? DEPTH + 4 : (map.dark ? 2.6 : DEPTH + 1.2);   // dark floors need the Lantern Ward
   const g1 = ctx.createLinearGradient(0, 0, 0, CY);
   g1.addColorStop(0, '#0a0806'); g1.addColorStop(1, '#2b231a');
@@ -268,12 +276,16 @@ export function render(ctx, map, p, t = 0) {
     const [cx, cy] = cell(f, r), face = (p.dir + 2) % 4;
     const lamp = map.lamps.find(l => l.x === cx && l.y === cy && l.face === face);
     if (lamp) return lamp;
+    const ins = map.inscriptions.find(i => i.x === cx && i.y === cy && i.face === face);
+    if (ins) return { plaque: true };
     const s = map.switches.find(s => s.x === cx && s.y === cy && s.face === face && s.found);
     return s || null;
   };
 
-  for (let k = DEPTH - 1; k >= 0; k--) {
-    const z0 = edge(k), z1 = edge(k + 1);
+  for (let k = DEPTH - 1; k >= (camZ > 0 ? -1 : 0); k--) {       // while stepping forward, also draw the cell we are leaving
+    const rz0 = edge(k), z1 = edge(k + 1);
+    if (z1 <= NEAR) continue;                                    // wholly behind the camera
+    const z0 = Math.max(rz0, NEAR);
     for (const side of [-1, 1]) {
       if (!solid(k, side) && solid(k + 1, side) && !solid(k, 0)) frontWall(ctx, side, z1, tile(k + 1, side), null);
     }
@@ -290,6 +302,9 @@ export function render(ctx, map, p, t = 0) {
     if (solid(k, -1)) sideWall(ctx, -0.5, z0, z1, tile(k, -1));
     if (solid(k, 1)) sideWall(ctx, 0.5, z0, z1, tile(k, 1));
     if (solid(k + 1, 0)) frontWall(ctx, 0, z1, tile(k + 1, 0), switchOn(k + 1, 0));
-    if (k >= 1 && p.enemies) drawEnemies(ctx, p, cx, cy, z0, z1, t);
+    if (k >= 1 && p.enemies) drawEnemies(ctx, p, cx, cy, rz0, z1, t);
+  }
+  if (view.fade > 0 && view.snapshot) {                          // turns, sidesteps, teleports and stairs: dissolve from the last frame
+    ctx.globalAlpha = view.fade; ctx.drawImage(view.snapshot, 0, 0); ctx.globalAlpha = 1;
   }
 }

@@ -1,4 +1,4 @@
-import { DIR_NAMES } from './map.js';
+import { DIR_NAMES, DX, DY } from './map.js';
 import { loadCampaign } from './data/floors.js';
 import { newGame, step, turn, interact, look } from './world.js';
 import { render } from './render.js';
@@ -6,22 +6,41 @@ import { runSetup, portraitHTML } from './setup.js';
 import { heroAttack, canAct, enemyAhead, retry, alive } from './combat.js';
 import { castSpell, useQuick, rest, advance, memorizedCount } from './magic.js';
 import { SPELLS } from './data/spells.js';
+import { saveGame, loadGame, listSaves, describeSave } from './save.js';
+import { createAudio } from './audio.js';
+import { startAnim, animView, classifyMove } from './anim.js';
 
-const game = newGame(loadCampaign());
+// ---- storage: localStorage if the browser allows it, otherwise memory for this visit only ---------------------
+function pickStorage() {
+  try { localStorage.setItem('totlq.t', '1'); localStorage.removeItem('totlq.t'); return { store: localStorage, durable: true }; }
+  catch { const m = new Map(); return { store: { getItem: k => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)) }, durable: false }; }
+}
+const { store: storage, durable } = pickStorage();
+const audio = createAudio({ storage });
+
+let game = newGame(loadCampaign());
 const $ = id => document.getElementById(id);
 const canvas = $('view'), ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
+const snapCanvas = document.createElement('canvas'); snapCanvas.width = canvas.width; snapCanvas.height = canvas.height;
+const snapCtx = snapCanvas.getContext('2d');
 
+// ---- messages, and the sounds that go with them ---------------------------------------------------------------
 const logLines = [];
+let wantAutosave = false;
 function flushMessages() {
   if (!game.msgs.length) return;
-  while (game.msgs.length) logLines.unshift(game.msgs.shift());
+  while (game.msgs.length) {
+    const m = game.msgs.shift();
+    logLines.unshift(m); audio.playForMessage(m);
+    if (/party rests|shrine blazes/.test(m)) wantAutosave = true;
+  }
   logLines.length = Math.min(logLines.length, 7);
   $('log').textContent = logLines.join('\n');
 }
 
-let started = false;
-const locked = () => !started || game.paused || game.defeated || game.won;
+let started = false, modalOpen = false;
+const locked = () => !started || modalOpen || game.paused || game.defeated || game.won;
 
 function attack(i) {
   if (locked()) return;
@@ -41,7 +60,21 @@ const KEYS = {
   f: 'use', ' ': 'use', Enter: 'use',
 };
 
-function act(name) { if (locked()) return; ACTIONS[name](); flushMessages(); }
+// ---- movement animation: presentation only, the move itself is already done -------------------------------------
+let anim = null, animSnapshot = null;
+const where = () => ({ floor: game.floor, x: game.x, y: game.y, dir: game.dir });
+function act(name) {
+  if (locked()) return;
+  const before = where();
+  snapCtx.drawImage(canvas, 0, 0);                              // the frame we are leaving, for dissolves
+  ACTIONS[name]();
+  flushMessages();
+  const kind = classifyMove(before, where(), DX[before.dir], DY[before.dir]);
+  if (kind) {
+    anim = startAnim(kind, performance.now()); animSnapshot = kind === 'fade' ? snapCanvas : null;
+    if (kind === 'fwd' || kind === 'back') audio.play('step');
+  }
+}
 
 let pending = null;                       // an ally spell waiting for its target: { i, name }
 function cancelTarget() { pending = null; $('party').classList.remove('targeting'); }
@@ -64,15 +97,116 @@ function quick(i, s) {
   const r = useQuick(game, i, s);
   if (!r.ok && !['not ready', 'fallen', 'empty'].includes(r.why)) game.msgs.push(r.why);
 }
+function togglePause() { if (started && !modalOpen && !game.defeated && !game.won) game.paused = !game.paused; }
 
-function togglePause() { if (started && !game.defeated && !game.won) game.paused = !game.paused; }
+// ---- sound ---------------------------------------------------------------------------------------------------------
+function updateSoundButton() { $('soundBtn').textContent = `Sound: ${audio.isMuted() ? 'off' : 'on'} (M)`; }
+function toggleSound() { audio.unlock(); audio.toggle(); updateSoundButton(); if (modalOpen) renderModal(); }
+const firstGesture = () => { audio.unlock(); audio.startAmbient(); removeEventListener('pointerdown', firstGesture); removeEventListener('keydown', firstGesture); };
+addEventListener('pointerdown', firstGesture); addEventListener('keydown', firstGesture);
+$('soundBtn').addEventListener('click', toggleSound);
+
+// ---- saving and loading ---------------------------------------------------------------------------------------------
+let autoExists = !!describeSave('auto', storage), autoMs = 0, lastFloor = game.floor, armedSlot = null;
+function autosave() {
+  if (!started || game.defeated || game.won) return;
+  autoExists = saveGame(game, 'auto', storage).ok || autoExists; autoMs = 0; wantAutosave = false;
+}
+
+function replaceGame(g, note) {
+  game = g; game.paused = false; modalOpen = false; $('modal').hidden = true;
+  cancelTarget(); anim = null; animSnapshot = null; lastFloor = game.floor; autoMs = 0; armedSlot = null;
+  logLines.length = 0; $('log').textContent = '';
+  started = true; $('game').hidden = false;
+  buildParty(); look(game); game.msgs.push(note); flushMessages();
+  ensureLoop();
+}
+function loadSlot(slot) {
+  const r = loadGame(slot, storage);
+  if (!r.ok) return r;
+  replaceGame(r.game, `Loaded ${slot === 'auto' ? 'the autosave' : 'slot ' + slot}: ${r.game.map.name}.`);
+  return r;
+}
+function saveSlot(slot) {
+  const r = saveGame(game, slot, storage);
+  game.msgs.push(r.ok ? `Game saved to slot ${slot}.` : r.why); flushMessages();
+  armedSlot = null; renderModal();
+}
+
+// ---- the menu: save slots, journal, help --------------------------------------------------------------------------------
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let modalTab = 'menu', prePause = false;
+function openModal(tab) {
+  if (!started) return;
+  if (!modalOpen) { prePause = game.paused; game.paused = true; }
+  modalOpen = true; modalTab = tab; cancelTarget(); armedSlot = null;
+  $('modal').hidden = false; renderModal();
+}
+function closeModal() { if (!modalOpen) return; modalOpen = false; $('modal').hidden = true; game.paused = prePause; armedSlot = null; }
+function renderModal() {
+  document.querySelectorAll('#tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === modalTab));
+  const body = $('tabBody');
+  if (modalTab === 'menu') {
+    const rows = listSaves(storage).map(({ slot, info }) => {
+      const label = slot === 'auto' ? 'Autosave' : `Slot ${slot}`;
+      const what = !info ? '<small>empty</small>' : info.damaged ? '<small>damaged or from another version</small>'
+        : `<small>${esc(info.floorName)} · ${esc(info.party)} · ${new Date(info.savedAt).toLocaleString()}</small>`;
+      const save = slot === 'auto' ? '' : `<button type="button" data-save="${slot}">${armedSlot === slot ? 'Overwrite?' : 'Save'}</button>`;
+      const load = info && !info.damaged ? `<button type="button" data-load="${slot}">Load</button>` : '';
+      return `<div class="saverow"><div class="what"><b>${label}</b>${what}</div>${save}${load}</div>`;
+    }).join('');
+    body.innerHTML = `<h3>Save and load</h3>${rows}
+      <p class="note">${durable ? 'Saves are kept in this browser. The game also saves itself every 30 seconds, when you change floors, and after resting.' : 'This browser blocks storage, so saves last only until you close this tab.'}</p>
+      <h3>Sound</h3><button type="button" data-sound>Sound is ${audio.isMuted() ? 'off. Turn on' : 'on. Turn off'}</button>`;
+  } else if (modalTab === 'journal') {
+    if (!game.journal.length) body.innerHTML = '<p>Nothing recorded yet. Inscriptions you read are saved here automatically, so a clue is never lost.</p>';
+    else {
+      let html = '';
+      game.floors.forEach((f, fi) => {
+        const es = game.journal.filter(j => j.floor === fi);
+        if (es.length) html += `<h3>${esc(f.name)}</h3>` + es.map(j => `<div class="entry"><b>${esc(j.title)}</b>${esc(j.text)}</div>`).join('');
+      });
+      body.innerHTML = html;
+    }
+  } else {
+    body.innerHTML = `<h3>Controls</h3><table>
+      <tr><td><kbd>W</kbd> <kbd>S</kbd></td><td>Step forward and back</td></tr>
+      <tr><td><kbd>A</kbd> <kbd>D</kbd></td><td>Sidestep left and right</td></tr>
+      <tr><td><kbd>Q</kbd> <kbd>E</kbd></td><td>Turn left and right</td></tr>
+      <tr><td><kbd>F</kbd> / <kbd>Space</kbd> / click the view</td><td>Use what is in front: doors, switches, lamps, shrines (stand on one), pits. Click a monster to attack it.</td></tr>
+      <tr><td><kbd>1</kbd>-<kbd>4</kbd></td><td>Attack with that hero (front row for melee; staffs and slings reach from the back)</td></tr>
+      <tr><td>Spell buttons</td><td>Enemy spells fire at the monster ahead. Ally spells ask you to click a hero. <kbd>Esc</kbd> cancels.</td></tr>
+      <tr><td><kbd>R</kbd></td><td>Rest (costs a ration, not with enemies near)</td></tr>
+      <tr><td><kbd>P</kbd></td><td>Pause</td></tr>
+      <tr><td><kbd>J</kbd></td><td>Journal</td></tr>
+      <tr><td><kbd>M</kbd></td><td>Sound on or off</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>This menu</td></tr></table>
+      <h3>Hints</h3><p class="note">Inscriptions on the walls are recorded in the journal. A Cutpurse spots pits ahead and can disarm them with F. Lantern Ward lights dark floors and reveals hidden things. Shrines raise the fallen but have only two charges.</p>`;
+  }
+}
+$('modal').addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.tab) { modalTab = t.dataset.tab; armedSlot = null; renderModal(); }
+  else if (t.id === 'closeModal') closeModal();
+  else if (t.dataset.sound !== undefined) toggleSound();
+  else if (t.dataset.load) { const r = loadSlot(t.dataset.load === 'auto' ? 'auto' : +t.dataset.load); if (!r.ok) { game.msgs.push(r.why); flushMessages(); } }
+  else if (t.dataset.save) {
+    const slot = +t.dataset.save;
+    if (describeSave(slot, storage) && armedSlot !== slot) { armedSlot = slot; renderModal(); } else saveSlot(slot);
+  }
+});
+$('menuBtn').addEventListener('click', () => openModal('menu'));
+$('journalBtn').addEventListener('click', () => openModal('journal'));
 
 addEventListener('keydown', e => {
   if (!started || e.ctrlKey || e.metaKey || e.altKey) return;
   if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;            // typing in a form
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (k === 'Escape') { e.preventDefault(); if (pending) cancelTarget(); else if (modalOpen) closeModal(); else openModal('menu'); return; }
+  if (k === 'j') { e.preventDefault(); if (modalOpen && modalTab === 'journal') closeModal(); else openModal('journal'); return; }
+  if (k === 'm') { e.preventDefault(); toggleSound(); return; }
+  if (modalOpen) return;
   if (k === 'p') { e.preventDefault(); togglePause(); return; }
-  if (k === 'Escape') { cancelTarget(); return; }
   if (k === 'r') { e.preventDefault(); doRest(); return; }
   if (/^[1-4]$/.test(k)) { e.preventDefault(); attack(+k - 1); return; }
   if (e.target.tagName === 'BUTTON' && (k === ' ' || k === 'Enter')) return;   // let focused buttons click
@@ -88,6 +222,7 @@ canvas.addEventListener('click', () => {
   } else act('use');
 });
 $('retryBtn').addEventListener('click', () => { if (game.won) location.reload(); else { retry(game); flushMessages(); } });
+$('loadBtn').addEventListener('click', () => { const r = loadSlot('auto'); if (!r.ok) { game.msgs.push(r.why); flushMessages(); } });
 
 // ---- party panel: built once, then updated in place so buttons stay clickable -------------------
 let cards = [];
@@ -95,7 +230,7 @@ function buildParty() {
   $('party').innerHTML = game.party.map((h, i) => `
     <div class="hero" data-i="${i}">
       ${portraitHTML(h)}
-      <div class="nm">${h.name}</div>
+      <div class="nm">${esc(h.name)}</div>
       <div class="cl">${h.class} L<span class="lv"></span> · ${h.row ? 'back' : 'front'}<b class="st"></b></div>
       <div class="bar"><i class="hp"></i></div><div class="hpt"></div>
       <button type="button" class="atk" data-i="${i}"><span class="cdfill"></span><span class="wl">${h.weapon}</span><kbd>${i + 1}</kbd></button>
@@ -146,23 +281,30 @@ function updateParty() {
 }
 
 function updateOverlay() {
-  const show = game.paused || game.defeated || game.won;
+  const show = (game.paused && !modalOpen) || game.defeated || game.won;
   $('overlay').hidden = !show;
   $('overlayText').textContent = game.won ? 'VICTORY!\nThe Lich Queen is destroyed.' : game.defeated ? 'THE PARTY HAS FALLEN' : 'PAUSED (P to resume)';
   $('retryBtn').hidden = !(game.defeated || game.won);
-  $('retryBtn').textContent = game.won ? 'Play again' : 'Try again';
+  $('retryBtn').textContent = game.won ? 'Play again' : 'Restart floor';
+  $('loadBtn').hidden = !(game.defeated && autoExists);
 }
 
-let last = 0;
+// ---- the loop ---------------------------------------------------------------------------------------------------------------
+let last = 0, looping = false;
 function loop(t) {
-  advance(game, Math.min(100, t - last)); last = t;
+  const dt = Math.min(100, t - last); last = t;
+  advance(game, dt);
   flushMessages();
-  render(ctx, game.map, game, t);
+  if (!locked()) { autoMs += dt; if (game.floor !== lastFloor) { lastFloor = game.floor; autosave(); } else if (autoMs >= 30000 || wantAutosave) autosave(); }
+  let view = {};
+  if (anim) { view = animView(anim, t); if (view.done) { anim = null; animSnapshot = null; } else view.snapshot = animSnapshot; }
+  render(ctx, game.map, game, t, view);
   $('compass').textContent = DIR_NAMES[game.dir];
   $('floorName').textContent = `Floor ${game.floor + 1} of ${game.floors.length}: ${game.map.name}`;
   updateParty(); updateOverlay();
   requestAnimationFrame(loop);
 }
+function ensureLoop() { if (!looping) { looping = true; last = performance.now(); requestAnimationFrame(loop); } }
 
 function begin(party) {
   game.party = party;
@@ -170,10 +312,11 @@ function begin(party) {
   $('game').hidden = false;
   buildParty();
   look(game);
-  game.msgs.push('You enter the Barrow Halls. W/S move, A/D sidestep, Q/E turn, F use. Click a monster or press 1-4 to attack, R rests, P pauses.');
-  last = performance.now();
-  requestAnimationFrame(loop);
+  game.msgs.push('You enter the Barrow Halls. W/S move, A/D sidestep, Q/E turn, F use. Click a monster or press 1-4 to attack, R rests, Esc opens the menu.');
+  flushMessages();
+  ensureLoop();                                     // no instant autosave: it would overwrite a previous run
 }
 
-window.__game = { game, get map() { return game.map; }, act, attack };
-runSetup(begin);
+updateSoundButton();
+window.__game = { get game() { return game; }, get map() { return game.map; }, act, attack, storage };
+runSetup(begin, { saves: listSaves(storage), onLoad: slot => loadSlot(slot) });

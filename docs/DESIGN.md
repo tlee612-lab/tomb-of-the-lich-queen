@@ -178,8 +178,8 @@ doors, one-way doors, and secret rooms.
 
 ## 9. Anti-frustration features (from research and the genre's known pain points)
 
-- **Clue journal.** Any inscription, wall text or hint is recorded automatically the
-  first time it is seen, so a clue is never missable.
+- **Clue journal.** Any inscription is recorded automatically the first time you stand in front
+  of it or face it from up to two cells away, so a clue is never missable. Press J to read them.
 - **Quick-use slots** for potions (see section 7).
 - **Visible damage** (see section 5).
 - **Multiple saves** (see section 2).
@@ -221,7 +221,7 @@ spell button. Click a portrait to open the character sheet.
 4. Combat, cooldowns, monsters.
 5. Spells and resting, food.
 6. Floor 1 content, then floors 2 and 3, then the finale.
-7. Save and load, journal, audio, polish.
+7. Save and load, journal, audio, polish. DONE (see section 15).
 
 ## 13. Research status
 
@@ -256,3 +256,30 @@ one-way door yet.
 teleporters, stairs) and fails if any item, monster, shrine, staircase, lamp or the Queen is
 unreachable. `tests/dungeon.mjs` covers stairs, pits, sockets, webs, poison, wraiths and the
 boss. A scripted run through the real browser UI also completed the game.
+
+## 15. Saving, journal, sound and animation (milestone 7)
+
+- **Saving:** three numbered slots plus an autosave, in the browser's local storage (`js/save.js`).
+  A save holds only what changes in play (floor state, monsters left alive on every floor, items,
+  doors, plates, switches, traps, lamps, party, bag, rations, timers, journal); everything fixed is
+  rebuilt from `js/data/floors.js`. Damaged or foreign saves are refused and shown as damaged, and a
+  browser with storage blocked falls back to saves that last until the tab closes. The autosave runs
+  every 30 seconds, on every floor change and after resting. Defeat offers to load it, or to restart
+  the floor. Starting a new game does not touch the old autosave for its first 30 seconds.
+- **Journal (J):** inscriptions on the walls (nine across the four floors) are recorded the first time
+  they are seen, grouped by floor, and saved with the game. They carry the real clues: the bronze key,
+  the hidden switch, the two gems, the pits, and the Queen's lamps.
+- **Sound (M toggles, remembered):** synthesized with the Web Audio API, no asset files: steps, hits,
+  crits, misses, spells, healing, pickups, doors, plates, spinners, stairs, resting, level-ups, a
+  low drone, and a fanfare. Effects follow the game's own messages (`soundsFor` in `js/audio.js`), so
+  new messages only need a rule. Sound starts after your first click or key press, as browsers require.
+- **Animation:** forward and back steps slide the camera for 140 ms; turns, sidesteps, teleports,
+  spinners and stairs dissolve from the previous frame. It is cosmetic: the rules never wait for it.
+- **Menu (Esc):** save slots, journal, controls and sound. It pauses the game.
+
+Tests: `tests/save.mjs` (round trips, corrupt data, storage failures), `tests/feel.mjs` (message to sound
+mapping, the audio engine against a fake, animation timing), the inscription rules in `tests/dungeon.mjs`,
+and an optional real-browser run, `tests/browser/playthrough.cjs`, that plays the whole game.
+
+Not done: I could not listen to the sound, so its mix and volume are untuned. There is no touch-specific
+layout beyond the on-screen movement pad.

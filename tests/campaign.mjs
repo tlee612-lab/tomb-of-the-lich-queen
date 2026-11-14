@@ -46,6 +46,14 @@ floors.forEach((f, fi) => {
     assert.deepEqual([back.to.floor, back.to.x, back.to.y], [fi, s.x, s.y], `${here}: stairs are paired`);
   }
   for (const sh of f.shrines) assert.equal(tileAt(f, sh.x, sh.y), 'H');
+  const seenAt = new Set();
+  for (const i of f.inscriptions) {
+    assert.equal(tileAt(f, i.x, i.y), '#', `${here}: inscription "${i.title}" is on a wall`);
+    assert.ok(walkable(i.x + DX[i.face], i.y + DY[i.face]), `${here}: inscription "${i.title}" can be read from open floor`);
+    assert.ok(i.title && i.text.length > 20, `${here}: inscription has a title and text`);
+    assert.ok(!seenAt.has(`${i.x},${i.y},${i.face}`), `${here}: no two inscriptions on one wall face`); seenAt.add(`${i.x},${i.y},${i.face}`);
+    assert.equal(i.seen, false);
+  }
   for (const [, tr] of Object.entries(f.traps)) assert.equal(tr.found, false, 'traps start hidden');
 });
 
@@ -108,6 +116,7 @@ fresh.forEach((f, fi) => {
   for (const s of f.stairs) assert.ok(R.has(key(s.x, s.y)), `${here}: stairs at ${s.x},${s.y} reachable`);
   for (const s of f.switches) assert.ok(R.has(key(s.x + DX[s.face], s.y + DY[s.face])), `${here}: switch at ${s.x},${s.y} reachable`);
   for (const l of f.lamps) assert.ok(R.has(key(l.x + DX[l.face], l.y + DY[l.face])), `${here}: lamp at ${l.x},${l.y} reachable`);
+  for (const i of f.inscriptions) assert.ok(R.has(key(i.x + DX[i.face], i.y + DY[i.face])), `${here}: inscription "${i.title}" can be read`);
   for (const p of f.plates) assert.ok(R.has(key(p.x, p.y)), `${here}: plate reachable`);
   for (const k of Object.keys(f.locks)) { const [x, y] = k.split(',').map(Number); assert.ok(R.has(key(x, y)), `${here}: locked door ${k} can be opened`); }
 });

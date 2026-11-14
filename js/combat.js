@@ -5,7 +5,7 @@ import { WEAPONS } from './data/weapons.js';
 import { slotsFor, loadoutFor } from './spellbook.js';
 
 const mod = v => Math.floor((v - 10) / 2);
-export const XP_LEVELS = [0, 30, 80, 160, 300];   // XP_LEVELS[n] = XP needed to leave level n
+export const XP_LEVELS = [0, 50, 130, 260, 420];   // XP_LEVELS[n] = XP needed to leave level n
 export const MAX_LEVEL = 5;
 export const POISON_MS = 10000, POISON_TICK = 2000, WEB_MS = 4000;
 
@@ -182,13 +182,15 @@ export function tick(g, dt) {
       e.slowMs = Math.max(0, (e.slowMs || 0) - dt);
       e.flash = Math.max(0, e.flash - dt); e.atkCd -= edt; e.moveCd -= edt;
       while (t.summons && e.phase < t.summons.length && e.hp / e.hpMax <= t.summons[e.phase]) {
-        e.phase++; spawnNear(g, 'bone_wretch', 2, 5, 2);
+        e.phase++; spawnNear(g, 'bone_wretch', 2, 5, t.summonCount ?? 2);
         say(g, `${e.name} screams, and the dead claw up from the floor!`);
       }
       if (d === 1) {
         if (e.atkCd <= 0) { enemyAttack(g, e); e.atkCd = t.atkMs; }
       } else if (t.ranged && lineOfFire(g, e, t.ranged.range)) {
         if (e.atkCd <= 0) { enemyAttack(g, e, t.ranged); e.atkCd = t.atkMs; }   // holds still and shoots
+      } else if (t.holdWhileWarded && isWarded(g, e)) {
+        /* the Queen sits her throne while her lamps burn: she shoots, she does not stalk the room */
       } else if (d !== undefined && d <= t.aggro && e.moveCd <= 0) {
         for (let k = 0; k < 4; k++) {
           const nx = e.x + DX[k], ny = e.y + DY[k];

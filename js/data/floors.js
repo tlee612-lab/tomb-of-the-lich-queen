@@ -21,7 +21,6 @@ const FLOORS = [
     stairs: [{ x: 12, y: 12, to: { floor: 1, x: 1, y: 1, dir: 1 } }],
     items: [
       { x: 9, y: 8, kind: 'key', id: 'bronze', name: 'bronze key' },
-      { x: 3, y: 3, kind: 'ration', name: 'rations', amount: 2 },
       { x: 14, y: 1, kind: 'ration', name: 'rations', amount: 2 },
       { x: 14, y: 3, kind: 'potion', id: 'heal', name: 'healing potion' },
       { x: 1, y: 8, kind: 'xp', amount: 40, name: 'forgotten cache' },
@@ -29,9 +28,10 @@ const FLOORS = [
       { x: 2, y: 9, kind: 'ration', name: 'rations', amount: 2 },
     ],
     monsters: [
-      { type: 'tomb_rat', x: 6, y: 2 }, { type: 'tomb_rat', x: 9, y: 1 }, { type: 'tomb_rat', x: 6, y: 7 },
-      { type: 'tomb_rat', x: 8, y: 8 }, { type: 'bone_wretch', x: 13, y: 2 },
-      { type: 'bone_wretch', x: 12, y: 8 }, { type: 'tomb_rat', x: 14, y: 8 },
+      { type: 'tomb_rat', x: 6, y: 2 }, { type: 'tomb_rat', x: 9, y: 1 }, { type: 'tomb_rat', x: 8, y: 3 },
+      { type: 'tomb_rat', x: 6, y: 7 }, { type: 'tomb_rat', x: 8, y: 8 }, { type: 'tomb_rat', x: 5, y: 8 },
+      { type: 'tomb_rat', x: 11, y: 3 }, { type: 'tomb_rat', x: 13, y: 6 }, { type: 'tomb_rat', x: 14, y: 8 }, { type: 'tomb_rat', x: 14, y: 10 },
+      { type: 'bone_wretch', x: 13, y: 2 }, { type: 'bone_wretch', x: 12, y: 8 }, { type: 'bone_wretch', x: 9, y: 6 }, { type: 'bone_wretch', x: 13, y: 10 },
     ],
   },
   { // ---- 2. The Drowned Ossuary: teleporter, spinners, gem-socket door, poison ----
@@ -55,14 +55,15 @@ const FLOORS = [
       { x: 2, y: 3, kind: 'ration', name: 'rations', amount: 2 },
       { x: 3, y: 1, kind: 'potion', id: 'antidote', name: 'antidote' },
       { x: 7, y: 3, kind: 'potion', id: 'heal', name: 'healing potion' },
-      { x: 5, y: 8, kind: 'ration', name: 'rations', amount: 2 },
       { x: 15, y: 9, kind: 'xp', amount: 50, name: 'drowned reliquary' },
       { x: 16, y: 9, kind: 'potion', id: 'return', name: 'draught of return' },
       { x: 16, y: 10, kind: 'potion', id: 'heal', name: 'healing potion' },
     ],
     monsters: [
-      { type: 'mire_ooze', x: 7, y: 2 }, { type: 'mire_ooze', x: 9, y: 3 }, { type: 'bone_wretch', x: 6, y: 1 },
-      { type: 'bone_wretch', x: 8, y: 6 }, { type: 'mire_ooze', x: 11, y: 6 }, { type: 'gravebound_guard', x: 10, y: 8 },
+      { type: 'mire_ooze', x: 7, y: 2 }, { type: 'mire_ooze', x: 9, y: 3 }, { type: 'mire_ooze', x: 10, y: 2 },
+      { type: 'mire_ooze', x: 11, y: 6 }, { type: 'mire_ooze', x: 7, y: 8 }, { type: 'mire_ooze', x: 3, y: 8 },
+      { type: 'bone_wretch', x: 6, y: 1 }, { type: 'bone_wretch', x: 8, y: 6 }, { type: 'bone_wretch', x: 13, y: 8 },
+      { type: 'gravebound_guard', x: 10, y: 8 }, { type: 'gravebound_guard', x: 14, y: 11 },
     ],
   },
   { // ---- 3. The Cinder Court: darkness, hidden pits, spiders, wraiths, a second key ----
@@ -82,7 +83,6 @@ const FLOORS = [
     stairs: [{ x: 1, y: 1, to: { floor: 1, x: 13, y: 12, dir: 0 } }, { x: 7, y: 12, to: { floor: 3, x: 7, y: 10, dir: 0 } }],
     items: [
       { x: 16, y: 1, kind: 'key', id: 'ember', name: 'ember key' },
-      { x: 3, y: 3, kind: 'ration', name: 'rations', amount: 2 },
       { x: 2, y: 3, kind: 'potion', id: 'heal', name: 'healing potion' },
       { x: 8, y: 10, kind: 'ration', name: 'rations', amount: 2 },
       { x: 12, y: 5, kind: 'xp', amount: 60, name: 'sealed hoard' },
@@ -90,10 +90,10 @@ const FLOORS = [
       { x: 5, y: 7, kind: 'potion', id: 'antidote', name: 'antidote' },
     ],
     monsters: [
-      { type: 'sepulchral_spider', x: 14, y: 2 }, { type: 'sepulchral_spider', x: 16, y: 3 },
-      { type: 'cinder_wraith', x: 12, y: 8 }, { type: 'cinder_wraith', x: 15, y: 9 },
-      { type: 'gravebound_guard', x: 6, y: 8 }, { type: 'gravebound_guard', x: 8, y: 10 },
-      { type: 'bone_wretch', x: 7, y: 7 },
+      { type: 'sepulchral_spider', x: 14, y: 2 }, { type: 'sepulchral_spider', x: 16, y: 3 }, { type: 'sepulchral_spider', x: 12, y: 2 },
+      { type: 'cinder_wraith', x: 12, y: 8 }, { type: 'cinder_wraith', x: 15, y: 9 }, { type: 'cinder_wraith', x: 16, y: 10 },
+      { type: 'gravebound_guard', x: 6, y: 8 }, { type: 'gravebound_guard', x: 8, y: 10 }, { type: 'gravebound_guard', x: 14, y: 7 },
+      { type: 'bone_wretch', x: 7, y: 7 }, { type: 'bone_wretch', x: 6, y: 10 },
     ],
   },
   { // ---- 4. The Queen's Chamber: the finale ----

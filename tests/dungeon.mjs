@@ -5,6 +5,8 @@ import { newGame, step, turn, interact, look, changeFloor } from '../js/world.js
 import { rosterHeroes, formParty, quickStartParty } from '../js/party.js';
 import { heroAttack, tick, retry, createMonster, alive, kill } from '../js/combat.js';
 import { advance, rest, useQuick, castSpell } from '../js/magic.js';
+import { MONSTERS } from '../js/data/monsters.js';
+const QUEEN_HP = MONSTERS.veshara.hp;
 
 const script = (...v) => { const q = [...v]; return () => (q.length ? q.shift() : 0.5); };
 const ROLL15 = 0.725;
@@ -25,17 +27,18 @@ const H = { brannoch: 0, sela: 1, ioreth: 2, quillon: 3 };
 // --- stairs, and each floor remembers its monsters --------------------------------------------------------
 let g = game();
 assert.equal(g.map.name, 'The Barrow Halls');
-const ratsBefore = g.enemies.length; assert.equal(ratsBefore, 7);
+const floor1Count = g.floors[0].monsters.length, floor2Count = g.floors[1].monsters.length;
+assert.equal(g.enemies.length, floor1Count);
 g.enemies[0].hp = 0; tick(g, 1);                                  // one monster dies
-assert.equal(g.enemies.length, 6);
+assert.equal(g.enemies.length, floor1Count - 1);
 g.x = 12; g.y = 11; g.dir = S; g.enemies = g.enemies.filter(e => e.x !== 12);   // clear the way to the stairs
 step(g, 1, 0);
 assert.equal(g.floor, 1); assert.deepEqual([g.x, g.y, g.dir], [1, 1, E]); assert.match(g.msgs.at(-1), /Drowned Ossuary/);
-assert.equal(g.enemies.length, 6, 'floor 2 has its own monsters');
+assert.equal(g.enemies.length, floor2Count, 'floor 2 has its own monsters');
 const f2count = g.enemies.length;
 step(g, 1, 0); step(g, -1, 0);                                    // off the stairs and back on
 assert.equal(g.floor, 0); assert.deepEqual([g.x, g.y, g.dir], [12, 12, N]);
-assert.ok(g.enemies.length <= 5, 'killed monsters stay dead on the floor you left');
+assert.ok(g.enemies.length <= floor1Count - 1, 'killed monsters stay dead on the floor you left');
 assert.equal(g.floors[1].enemies.length, f2count);
 
 // --- gem-socket door ------------------------------------------------------------------------------------------
@@ -61,8 +64,8 @@ assert.deepEqual(g.party.map(h => h.hp), hpBefore, 'a disarmed pit does no harm'
 g = game(script(0.5), ['Brannoch', 'Dagny', 'Ioreth', 'Quillon']); goto(g, 2, 8, 2, E);   // no Cutpurse
 look(g); assert.equal(g.map.traps['9,2'].found, false);
 g.party.forEach(h => { h.hp = h.hpMax; });
-step(g, 1, 0);                                                   // falls into the pit: d6 with rng .5 = 4
-assert.equal(g.x, 9); assert.deepEqual(g.party.map(h => h.hp), g.party.map(h => h.hpMax - 4));
+step(g, 1, 0);                                                   // falls into the pit: d6+2 with rng .5 = 6
+assert.equal(g.x, 9); assert.deepEqual(g.party.map(h => h.hp), g.party.map(h => h.hpMax - 6));
 assert.equal(g.map.traps['9,2'].found, true); assert.equal(tileAt(g.map, 9, 2), 'X');
 g.party.forEach(h => { h.hp = 2; }); g.x = 8; g.dir = E; step(g, 1, 0);
 assert.ok(g.party.every(h => h.hp === 1), 'a pit hurts but never kills');
@@ -118,8 +121,8 @@ g.enemies = g.map.enemies; const queen = g.enemies[0]; queen.x = 7; queen.y = 3;
 assert.equal(queen.type, 'veshara');
 g.rng = script(ROLL15, 0.5);
 let r = heroAttack(g, H.brannoch);
-assert.equal(r.warded, true); assert.equal(queen.hp, 70, 'lamps burning: no damage'); assert.match(g.msgs.at(-1), /lamps still burn/);
-castSpell(g, H.quillon, 'Cinder Dart'); assert.equal(queen.hp, 70); assert.match(g.msgs.at(-1), /ward/);
+assert.equal(r.warded, true); assert.equal(queen.hp, QUEEN_HP, 'lamps burning: no damage'); assert.match(g.msgs.at(-1), /lamps still burn/);
+castSpell(g, H.quillon, 'Cinder Dart'); assert.equal(queen.hp, QUEEN_HP); assert.match(g.msgs.at(-1), /ward/);
 // snuff the lamps one by one: the ward only breaks when all are dark
 const snuff = (x, y, d) => { g.x = x; g.y = y; g.dir = d; return interact(g); };
 snuff(3, 2, W); snuff(11, 2, E); assert.equal(g.map.lamps.filter(l => l.lit).length, 1);
@@ -128,14 +131,15 @@ assert.equal(heroAttack(g, H.brannoch).warded, true, 'one lamp still burns');
 snuff(7, 1, N); assert.ok(g.map.lamps.every(l => !l.lit)); assert.match(g.msgs.at(-1), /ward is broken/);
 assert.equal(snuff(7, 1, N), true); assert.match(g.msgs.at(-1), /already dark/);
 g.x = 7; g.y = 4; g.dir = N; g.party.forEach(h => { h.cd = 0; }); g.rng = script(ROLL15, 0.5);
-r = heroAttack(g, H.brannoch); assert.equal(r.hit, true); assert.equal(queen.hp, 62);
+r = heroAttack(g, H.brannoch); assert.equal(r.hit, true); assert.equal(queen.hp, QUEEN_HP - 8);
 // summons at 66% and 33%, once each
-g.rng = script(0.3, 0.7, 0.4, 0.6, 0.2, 0.8, 0.5, 0.5);
-queen.atkCd = 1e9; queen.hp = Math.floor(70 * 0.65); tick(g, 10);
-assert.equal(g.enemies.filter(e => e.type === 'bone_wretch').length, 2); assert.match(g.msgs.join('|'), /dead claw up/);
-tick(g, 10); assert.equal(g.enemies.filter(e => e.type === 'bone_wretch').length, 2, 'only once per phase');
-queen.hp = Math.floor(70 * 0.3); tick(g, 10);
-assert.equal(g.enemies.filter(e => e.type === 'bone_wretch').length, 4);
+g.rng = script(0.3, 0.7, 0.4, 0.6, 0.2, 0.8, 0.5, 0.5, 0.35, 0.65, 0.45, 0.55, 0.25, 0.75);
+const SUMMON = MONSTERS.veshara.summonCount, wretches = () => g.enemies.filter(e => e.type === 'bone_wretch').length;
+queen.atkCd = 1e9; queen.hp = Math.floor(QUEEN_HP * 0.65); tick(g, 10);
+assert.equal(wretches(), SUMMON); assert.match(g.msgs.join('|'), /dead claw up/);
+tick(g, 10); assert.equal(wretches(), SUMMON, 'only once per phase');
+queen.hp = Math.floor(QUEEN_HP * 0.3); tick(g, 10);
+assert.equal(wretches(), 2 * SUMMON);
 // she stays in her chamber and shoots from range
 g = game(() => 0.9); goto(g, 3, 7, 6, N, true);
 g.enemies = g.map.enemies; const q2 = g.enemies[0]; q2.atkCd = 0;
@@ -178,7 +182,7 @@ assert.equal(g.journal.length, 0, 'a solid cell in the way hides the wall behind
 g = game(); goto(g, 2, 14, 2, E);
 g.party.forEach(h => { h.hp = 0; }); tick(g, 10); assert.equal(g.defeated, true);
 retry(g);
-assert.equal(g.floor, 2); assert.deepEqual([g.x, g.y], [1, 1]); assert.equal(g.enemies.length, 7, 'the floor is repopulated');
+assert.equal(g.floor, 2); assert.deepEqual([g.x, g.y], [1, 1]); assert.equal(g.enemies.length, g.floors[2].monsters.length, 'the floor is repopulated');
 assert.ok(g.party.every(h => h.hp === h.hpMax && !h.poisonMs && !h.webMs));
 
 console.log('dungeon ok');

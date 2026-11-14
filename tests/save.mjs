@@ -42,13 +42,13 @@ const f1 = r.floors[0];
 assert.equal(tileAt(f1, 4, 2), 'd', 'opened door stays open');
 assert.equal(f1.plates[0].pressed, true); assert.equal(f1.shrines[0].charges, 1); assert.equal(f1.items.length, g.floors[0].items.length);
 assert.equal(f1.switches[0].on, true); assert.equal(f1.inscriptions[0].seen, true);
-assert.equal(f1.enemies.length, 5, 'monsters killed on a floor we left stay dead');
+assert.equal(f1.enemies.length, g.floors[0].monsters.length - 2, 'monsters killed on a floor we left stay dead');
 // floor 3 (current)
 assert.equal(r.map.traps['9,2'].found, true); assert.equal(tileAt(r.map, 11, 2), '.', 'disarmed pit stays disarmed');
 assert.equal(r.enemies.length, onFloor3Alive); assert.equal(r.enemies[0].hp, 3); assert.equal(r.enemies[0].x, 14); assert.equal(r.enemies[0].slowMs, 500);
 assert.equal(r.enemies, r.map.enemies, 'the live enemy list is the floor\'s list');
 // untouched floors are untouched
-assert.equal(r.floors[1].enemies.length, 6); assert.equal(tileAt(r.floors[1], 13, 10), 'M');
+assert.equal(r.floors[1].enemies.length, g.floors[1].monsters.length); assert.equal(tileAt(r.floors[1], 13, 10), 'M');
 assert.equal(r.floors[3].lamps.every(l => l.lit), true);
 // static data is rebuilt from the floor definitions, not trusted from the file
 assert.equal(r.map.stairs.length, 2); assert.deepEqual(Object.keys(r.floors[0].locks), ['10,2']);

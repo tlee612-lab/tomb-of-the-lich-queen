@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import { loadMap } from '../js/map.js';
 import { newGame, step, interact } from '../js/world.js';
 import { quickStartParty, formParty } from '../js/party.js';
-import { gainXp, alive } from '../js/combat.js';
+import { gainXp, alive, XP_LEVELS } from '../js/combat.js';
 import { castSpell, useQuick, rest, advance, memorizedCount, HUNGER_MS } from '../js/magic.js';
 import { slotsFor } from '../js/spellbook.js';
+import { MONSTERS } from '../js/data/monsters.js';
 
 const script = (...v) => { const q = [...v]; return () => (q.length ? q.shift() : 0.5); };
 function setup(monsters = [], rng = script()) {
@@ -20,7 +21,7 @@ const H = { brannoch: 0, sela: 1, ioreth: 2, quillon: 3 };
 let g = setup();
 assert.deepEqual(g.party[H.quillon].spellsMemorized, ['Cinder Dart', 'Frostbind']);
 assert.deepEqual(g.party[H.brannoch].spellsMemorized, []);
-gainXp(g, g.party[H.quillon], 80);                       // level 3: a third slot arrives
+gainXp(g, g.party[H.quillon], XP_LEVELS[2]);              // level 3: a third slot arrives
 assert.equal(g.party[H.quillon].level, 3); assert.equal(slotsFor(g.party[H.quillon]), 3);
 assert.equal(g.party[H.quillon].spellsMemorized.length, 3);
 
@@ -91,21 +92,22 @@ assert.match(useQuick(g, H.ioreth, 1).why, /empty/);
 
 // --- rations ----------------------------------------------------------------------------------------------------------
 g = setup(); at(g, 12, 1, 1); g.map.items = [{ x: 13, y: 1, kind: 'ration', name: 'rations', amount: 2 }];
-step(g, 1, 0); assert.equal(g.rations, 6);
+const r0 = g.rations; step(g, 1, 0); assert.equal(g.rations, r0 + 2);
 
 // --- resting --------------------------------------------------------------------------------------------------------------
 g = setup([], script(0.9));                              // 0.9 >= 0.25: no interruption
+const start = g.rations;
 at(g, 1, 1, 2);
 g.party[H.brannoch].hp = 10; g.party[H.quillon].spellsMemorized = []; g.party[H.sela].hp = 0;
 r = rest(g);
 assert.deepEqual([r.ok, r.interrupted], [true, false]);
-assert.equal(g.rations, 3);
+assert.equal(g.rations, start - 1);
 assert.equal(g.party[H.brannoch].hp, 10 + Math.ceil(g.party[H.brannoch].hpMax * 0.5));
 assert.equal(g.party[H.quillon].spellsMemorized.length, 2, 'spells restored');
 assert.equal(g.party[H.sela].hp, 0, 'rest does not revive the fallen');
 
-g = setup([{ type: 'tomb_rat', x: 3, y: 3 }]); at(g, 1, 1, 2);
-assert.equal(rest(g).ok, false); assert.equal(g.rations, 4, 'refused with enemies near; no ration spent');
+g = setup([{ type: 'tomb_rat', x: 3, y: 3 }]); at(g, 1, 1, 2); const setupRations = g.rations;
+assert.equal(rest(g).ok, false); assert.equal(g.rations, setupRations, 'refused with enemies near; no ration spent');
 g = setup(); g.rations = 0; assert.equal(rest(g).ok, false);
 
 g = setup([], script(0.1, 0.0));                         // 0.1 < 0.25: a wanderer interrupts; picks the first candidate cell
@@ -131,10 +133,10 @@ g.paused = true; const before = g.hungerMs; advance(g, 99999); assert.equal(g.hu
 g = setup([{ type: 'bone_wretch', x: 1, y: 2 }, { type: 'tomb_rat', x: 2, y: 1 }]);
 at(g, 1, 1, 2); g.enemies.forEach(e => { e.atkCd = 1e9; e.moveCd = 1e9; });
 advance(g, 2000);
-assert.equal(g.enemies.find(e => e.type === 'bone_wretch').hp, 13, 'adjacent undead burned for the Votary level');
-assert.equal(g.enemies.find(e => e.type === 'tomb_rat').hp, 5, 'living monsters unaffected');
+assert.equal(g.enemies.find(e => e.type === 'bone_wretch').hp, MONSTERS.bone_wretch.hp - 1, 'adjacent undead burned for the Votary level');
+assert.equal(g.enemies.find(e => e.type === 'tomb_rat').hp, MONSTERS.tomb_rat.hp, 'living monsters unaffected');
 g.party[H.ioreth].hp = 0; g.sanctMs = 0; advance(g, 4000);
-assert.equal(g.enemies.find(e => e.type === 'bone_wretch').hp, 13, 'no Sanctify without a living Votary');
+assert.equal(g.enemies.find(e => e.type === 'bone_wretch').hp, MONSTERS.bone_wretch.hp - 1, 'no Sanctify without a living Votary');
 
 // --- shrine -------------------------------------------------------------------------------------------------------------------------
 g = setup(); at(g, 13, 5, 0);

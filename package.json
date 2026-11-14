@@ -2,5 +2,8 @@
   "name": "tomb-of-the-lich-queen",
   "private": true,
   "type": "module",
-  "scripts": { "test": "node tests/walkthrough.mjs && node tests/party.mjs && node tests/combat.mjs && node tests/magic.mjs && node tests/campaign.mjs && node tests/dungeon.mjs && node tests/save.mjs && node tests/feel.mjs" }
+  "scripts": {
+    "test": "node tests/walkthrough.mjs && node tests/party.mjs && node tests/combat.mjs && node tests/magic.mjs && node tests/campaign.mjs && node tests/dungeon.mjs && node tests/save.mjs && node tests/feel.mjs && node tests/balance.mjs",
+    "balance": "node tools/balance.mjs 100 --pace=slow"
+  }
 }

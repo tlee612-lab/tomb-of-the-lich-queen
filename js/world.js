@@ -11,7 +11,7 @@ export function newGame(mapOrFloors, rng = Math.random) {
   const map = floors[0];
   return { floors, floor: 0, map, x: map.start.x, y: map.start.y, dir: map.start.dir, bag: [], msgs: [], rng,
     party: [], enemies: map.enemies, fx: [], paused: false, defeated: false, won: false, journal: [],
-    rations: 4, hungerMs: 0, starving: false, starveMs: 0, lightMs: 0, sanctMs: 0 };
+    rations: 3, hungerMs: 0, starving: false, starveMs: 0, lightMs: 0, sanctMs: 0 };
 }
 
 const say = (g, m) => g.msgs.push(m);
@@ -104,7 +104,7 @@ function enter(g) {
   } else if (t === 'X') {
     m.traps[`${g.x},${g.y}`].found = true;
     say(g, 'The floor gives way! The party tumbles into a pit.');
-    for (const h of g.party.filter(alive)) { h.hp = Math.max(1, h.hp - dice(g, [1, 6, 0])); h.hurt = { text: '-', ttl: 800 }; }
+    for (const h of g.party.filter(alive)) { h.hp = Math.max(1, h.hp - dice(g, [1, 6, 2])); h.hurt = { text: '-', ttl: 800 }; }
   }
   look(g);
 }

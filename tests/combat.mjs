@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { loadMap } from '../js/map.js';
 import { newGame, step } from '../js/world.js';
 import { quickStartParty, formParty } from '../js/party.js';
-import { heroAttack, canAct, tick, retry, gainXp, enemyAhead, createMonster, alive } from '../js/combat.js';
+import { MONSTERS } from '../js/data/monsters.js';
+import { heroAttack, canAct, tick, retry, gainXp, enemyAhead, createMonster, alive, XP_LEVELS } from '../js/combat.js';
 
 // scripted rng: takes values from a queue, then 0.5
 const script = (...vals) => { const q = [...vals]; return () => (q.length ? q.shift() : 0.5); };
@@ -29,7 +30,7 @@ g.rng = script(ROLL15, 0.5);
 let r = heroAttack(g, 0);
 assert.deepEqual([r.ok, r.hit, r.dmg], [true, true, 8]);
 assert.equal(g.enemies.find(e => e.hp > 0), undefined);
-assert.ok(g.party.filter(alive).every(h => h.xp === 2), 'xp split four ways (ceil(5/4)=2)');
+assert.ok(g.party.filter(alive).every(h => h.xp === Math.ceil(MONSTERS.tomb_rat.xp / 4)), 'xp is split four ways');
 assert.ok(g.msgs.some(m => /destroyed/.test(m)));
 
 // --- cooldown ----------------------------------------------------------------------------------
@@ -60,12 +61,12 @@ g = setup([{ type: 'tomb_rat', x: 1, y: 3 }], script(ROLL15, 0.5));
 at(g, 1, 2, 2); g.party[1].hp = 0;
 assert.equal(canAct(g, 1).ok, false);
 heroAttack(g, 0);
-assert.equal(g.party[1].xp, 0); assert.equal(g.party[0].xp, 2);   // ceil(5/3) = 2
+assert.equal(g.party[1].xp, 0); assert.equal(g.party[0].xp, Math.ceil(MONSTERS.tomb_rat.xp / 3));   // split among the three still standing
 
 // --- levelling up --------------------------------------------------------------------------------
 g = setup([], script());
 const b = g.party[0], hp0 = b.hpMax;
-gainXp(g, b, 30);
+gainXp(g, b, XP_LEVELS[1]);
 assert.equal(b.level, 2); assert.ok(b.hpMax > hp0 && b.hp > hp0 - 1);
 gainXp(g, b, 1000); assert.equal(b.level, 5, 'level cap is 5');
 
@@ -73,7 +74,7 @@ gainXp(g, b, 1000); assert.equal(b.level, 5, 'level cap is 5');
 g = setup([{ type: 'tomb_rat', x: 3, y: 3 }], () => 0.9);   // d20=19, damage die 3
 at(g, 1, 1, 2);
 const hpBefore = g.party.map(h => h.hp);
-for (let i = 0; i < 60; i++) tick(g, 100);          // 6s: arrives, then a few attacks
+for (let i = 0; i < 35; i++) tick(g, 100);          // 3.5s: it arrives, then bites a couple of times
 const rat = g.enemies[0];
 assert.equal(Math.abs(rat.x - 1) + Math.abs(rat.y - 1), 1, 'rat ends adjacent to the party');
 assert.ok(g.party[0].hp < hpBefore[0] || g.party[1].hp < hpBefore[1], 'a front-row hero was hit');

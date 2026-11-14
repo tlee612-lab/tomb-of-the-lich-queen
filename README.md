@@ -10,16 +10,19 @@ No build step. Serve the folder and open it:
 then visit http://localhost:8000.
 
 Controls: W/S move, A/D sidestep, Q/E turn, F / Space / click the view to use what is in front.
+Click a monster in front of you, or press 1-4, to attack with that hero. P pauses.
 
 ## Test
 
     npm test
 
-Plays the test map through the rules in `js/world.js` (doors, keys, plates, switches,
-teleporter, spinner).
+Runs the rules tests: the map walkthrough (`js/world.js`), party and hero creation, and combat
+(`js/combat.js`).
 
 ## Using your own data and graphics
 
 - Classes: `js/data/classes.js`. Premade heroes: `js/data/roster.js` (same shape as a created hero).
 - Portraits: put images in `assets/portraits/` and set `portrait: 'assets/portraits/name.png'` on a roster entry.
   Without one, a letter tile is shown.
+- Monsters: `js/data/monsters.js`; weapons: `js/data/weapons.js`. Set `sprite: 'assets/monsters/x.png'` on a
+  monster to replace the drawn placeholder.

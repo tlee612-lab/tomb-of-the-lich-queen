@@ -36,6 +36,10 @@ const TEST = {
   // wall switches: on wall cell (x,y), on the face looking toward `face`
   switches: [{ x: 0, y: 6, face: 1, hidden: true, targets: [[7, 8]] }],
   teleports: [{ x: 12, y: 6, to: { x: 2, y: 6, dir: 0 } }],
+  monsters: [
+    { type: 'tomb_rat', x: 6, y: 1 }, { type: 'tomb_rat', x: 13, y: 2 }, { type: 'tomb_rat', x: 14, y: 1 },
+    { type: 'bone_wretch', x: 14, y: 7 }, { type: 'bone_wretch', x: 6, y: 5 },
+  ],
 };
 
 export function loadMap() {
@@ -50,7 +54,7 @@ export function loadMap() {
     items: copy(TEST.items), locks: copy(TEST.locks),
     plates: copy(TEST.plates).map(p => ({ ...p, pressed: false })),
     switches: copy(TEST.switches).map(s => ({ ...s, found: !s.hidden, on: false })),
-    teleports: copy(TEST.teleports),
+    teleports: copy(TEST.teleports), monsters: copy(TEST.monsters),
   };
 }
 

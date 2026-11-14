@@ -29,7 +29,7 @@ export function createHero(o) {
     id: o.id || 'h' + Math.random().toString(36).slice(2, 8),
     name: o.name.trim(), class: o.class, portrait: o.portrait || null,
     level: 1, xp: 0, attrs: { ...o.attrs }, hpMax, hp: hpMax, status: [], row: c.row,
-    weapon: c.weapon, armor: null, inventory: [], quickSlots: [null, null],
+    weapon: c.weapon, armor: c.armor, cd: 0, inventory: [], quickSlots: [null, null],
     spellsKnown: [...c.spells], spellsMemorized: c.spells.slice(0, c.slots),
   };
 }

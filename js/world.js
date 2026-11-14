@@ -1,9 +1,13 @@
 // Game rules for the map: movement, doors, keys, plates, switches, teleporters, spinners.
 // No DOM here, so it can be tested from Node.
 import { DX, DY, tileAt, isSolid } from './map.js';
+import { spawnEnemies, enemyAt } from './combat.js';
 
 export function newGame(map, rng = Math.random) {
-  return { map, x: map.start.x, y: map.start.y, dir: map.start.dir, bag: [], msgs: [], rng };
+  const g = { map, x: map.start.x, y: map.start.y, dir: map.start.dir, bag: [], msgs: [], rng,
+    party: [], enemies: [], fx: [], paused: false, defeated: false };
+  spawnEnemies(g);
+  return g;
 }
 
 const say = (g, m) => g.msgs.push(m);
@@ -78,5 +82,7 @@ export function step(g, f, r) {
     if (f === 1 && r === 0 && tileAt(g.map, nx, ny) === 'D') { interact(g); return; }
     say(g, 'Blocked.'); return;
   }
+  const blocker = enemyAt(g, nx, ny);
+  if (blocker) { say(g, `A ${blocker.name} blocks the way.`); return; }
   g.x = nx; g.y = ny; enter(g);
 }

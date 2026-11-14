@@ -1,5 +1,6 @@
 // Layered perspective renderer: draws visible cells back to front (painter's order).
 import { DX, DY, tileAt, SOLID } from './map.js';
+import { MONSTERS } from './data/monsters.js';
 
 const W = 448, H = 300;
 const CX = W / 2, CY = H / 2 + 6;
@@ -101,6 +102,78 @@ function floorDecal(ctx, ch, z0, z1, t) {
   }
 }
 
+// ---- monsters ----------------------------------------------------------------------
+const spriteCache = {};
+function spriteImage(src) {
+  if (!src) return null;
+  if (!(src in spriteCache)) {
+    const img = new Image(); img.src = src; spriteCache[src] = img;
+    img.onerror = () => { spriteCache[src] = null; };
+  }
+  const img = spriteCache[src];
+  return img && img.complete && img.naturalWidth ? img : null;
+}
+
+const mix = (c, f) => c.map(v => Math.min(255, v + (255 - v) * f));
+const circle = (ctx, x, y, r, fill) => { ctx.fillStyle = fill; ctx.beginPath(); ctx.arc(x, y, Math.max(0.5, r), 0, 7); ctx.fill(); };
+const ellipse = (ctx, x, y, rx, ry, fill) => { ctx.fillStyle = fill; ctx.beginPath(); ctx.ellipse(x, y, Math.max(0.5, rx), Math.max(0.5, ry), 0, 0, 7); ctx.fill(); };
+
+// Placeholder monster art, drawn with shapes. Set `sprite` in js/data/monsters.js to use an image instead.
+function drawMonster(ctx, e, zc, t, spriteSrc) {
+  const [cx, fy] = proj(0, HALF_H, zc), u = FOCAL / zc;       // u = pixels per world unit at this depth
+  const f = e.flash > 0 ? 0.65 : 0;
+  const c = base => shade(mix(base, f), zc);
+  const img = spriteImage(spriteSrc);
+  if (img) {
+    const h = (e.kind === 'rat' ? 0.45 : 1.0) * u, w = (img.naturalWidth / img.naturalHeight) * h;
+    ctx.drawImage(img, cx - w / 2, fy - h, w, h); return h;
+  }
+  const bob = Math.sin(t / 220 + e.x * 3 + e.y) * 0.015 * u;
+  if (e.kind === 'rat') {
+    ellipse(ctx, cx, fy - 0.17 * u + bob, 0.27 * u, 0.15 * u, c([96, 70, 48]));
+    ctx.strokeStyle = c([150, 110, 100]); ctx.lineWidth = Math.max(1, 0.03 * u);        // tail
+    ctx.beginPath(); ctx.moveTo(cx + 0.24 * u, fy - 0.1 * u); ctx.quadraticCurveTo(cx + 0.5 * u, fy - 0.02 * u, cx + 0.42 * u, fy - 0.2 * u); ctx.stroke();
+    circle(ctx, cx - 0.2 * u, fy - 0.3 * u + bob, 0.06 * u, c([120, 90, 70]));          // ears
+    circle(ctx, cx + 0.2 * u, fy - 0.3 * u + bob, 0.06 * u, c([120, 90, 70]));
+    ellipse(ctx, cx, fy - 0.25 * u + bob, 0.13 * u, 0.11 * u, c([116, 86, 62]));        // head
+    circle(ctx, cx - 0.05 * u, fy - 0.27 * u + bob, 0.025 * u, '#d33');
+    circle(ctx, cx + 0.05 * u, fy - 0.27 * u + bob, 0.025 * u, '#d33');
+    return 0.4 * u;
+  }
+  // wretch: a slumped skeletal figure
+  const bone = c([200, 190, 165]), dark = shade([20, 16, 12], zc);
+  ctx.fillStyle = bone;
+  ctx.fillRect(cx - 0.16 * u, fy - 0.45 * u, 0.08 * u, 0.45 * u);                      // legs
+  ctx.fillRect(cx + 0.08 * u, fy - 0.45 * u, 0.08 * u, 0.45 * u);
+  ellipse(ctx, cx, fy - 0.68 * u + bob, 0.24 * u, 0.26 * u, c([176, 166, 142]));       // ribcage
+  ctx.strokeStyle = dark; ctx.lineWidth = Math.max(1, 0.025 * u);
+  for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(cx - 0.18 * u, fy - 0.68 * u + i * 0.08 * u + bob); ctx.lineTo(cx + 0.18 * u, fy - 0.68 * u + i * 0.08 * u + bob); ctx.stroke(); }
+  ctx.fillStyle = bone;
+  ctx.fillRect(cx - 0.34 * u, fy - 0.85 * u + bob, 0.07 * u, 0.55 * u);                // arms
+  ctx.fillRect(cx + 0.27 * u, fy - 0.85 * u + bob, 0.07 * u, 0.55 * u);
+  circle(ctx, cx, fy - 1.0 * u + bob, 0.15 * u, c([214, 204, 180]));                   // skull
+  circle(ctx, cx - 0.055 * u, fy - 1.02 * u + bob, 0.035 * u, dark);
+  circle(ctx, cx + 0.055 * u, fy - 1.02 * u + bob, 0.035 * u, dark);
+  ctx.fillStyle = shade([120, 255, 160], zc); ctx.fillRect(cx - 0.065 * u, fy - 1.02 * u + bob, 0.02 * u, 0.02 * u); ctx.fillRect(cx + 0.045 * u, fy - 1.02 * u + bob, 0.02 * u, 0.02 * u);
+  return 1.15 * u;
+}
+
+function drawEnemies(ctx, p, cx, cy, z0, z1, t) {
+  const zc = (z0 + z1) / 2, u = FOCAL / zc;
+  let top = 0;
+  for (const e of p.enemies) {
+    if (e.hp <= 0 || e.x !== cx || e.y !== cy) continue;
+    top = Math.max(top, drawMonster(ctx, { ...e, kind: MONSTERS[e.type].kind }, zc, t, MONSTERS[e.type].sprite));
+  }
+  for (const f of p.fx) {
+    if (f.cell.x !== cx || f.cell.y !== cy) continue;
+    const [sx, sy] = proj(0, HALF_H, zc), rise = (f.age / f.ttl) * 0.35 * u;
+    ctx.font = `bold ${Math.max(10, 0.2 * u) | 0}px monospace`; ctx.textAlign = 'center';
+    ctx.lineWidth = 3; ctx.strokeStyle = '#000'; ctx.strokeText(f.text, sx, sy - (top || 0.8 * u) - rise);
+    ctx.fillStyle = f.color; ctx.fillText(f.text, sx, sy - (top || 0.8 * u) - rise);
+  }
+}
+
 export function render(ctx, map, p, t = 0) {
   const g1 = ctx.createLinearGradient(0, 0, 0, CY);
   g1.addColorStop(0, '#0a0806'); g1.addColorStop(1, '#2b231a');
@@ -134,5 +207,6 @@ export function render(ctx, map, p, t = 0) {
     if (solid(k, -1)) sideWall(ctx, -0.5, z0, z1, tile(k, -1));
     if (solid(k, 1)) sideWall(ctx, 0.5, z0, z1, tile(k, 1));
     if (solid(k + 1, 0)) frontWall(ctx, 0, z1, tile(k + 1, 0), switchOn(k + 1, 0));
+    if (k >= 1 && p.enemies) drawEnemies(ctx, p, cx, cy, z0, z1, t);
   }
 }

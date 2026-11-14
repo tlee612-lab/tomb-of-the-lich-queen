@@ -2,5 +2,5 @@
   "name": "tomb-of-the-lich-queen",
   "private": true,
   "type": "module",
-  "scripts": { "test": "node tests/walkthrough.mjs && node tests/party.mjs" }
+  "scripts": { "test": "node tests/walkthrough.mjs && node tests/party.mjs && node tests/combat.mjs" }
 }

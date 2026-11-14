@@ -54,7 +54,7 @@ Modifier = (attribute − 10) / 2, rounded down.
 |---|---|---|
 | **Warden** | Front-line fighter | Highest HP, heavy armor, best melee. |
 | **Cutpurse** | Skirmisher / utility | Light armor. Backstab bonus on a flanked or newly-engaged enemy, finds hidden switches, opens locks, disarms traps. Not redundant: the only source of lockpicking and trap detection. |
-| **Votary** | Healer / support | Healing, wards. Sanctify aura damages undead near the party automatically, no cast needed. |
+| **Votary** | Healer / support | Healing, wards. Fights with a sling from the back row. Sanctify aura damages undead near the party automatically, no cast needed. |
 | **Magister** | Ranged damage | Fragile. Strongest spells. |
 
 ### 4.4 Levels
@@ -93,8 +93,13 @@ Real-time, cooldown-driven.
   it.
 - **Death:** a hero at 0 HP falls and can be revived. If all four fall, the game
   returns to the last save.
-- Combat can be paused with the space bar to read and plan. Pause does not stop the
-  cooldown display from being readable.
+- Combat can be paused with **P** to read and plan.
+- **Implemented (milestone 4):** cooldowns, click a monster or press 1-4 to attack, only the
+  front row uses melee weapons (the Staff has reach and the Sling is ranged, so the back row
+  is not idle), monsters hunt the party along open corridors and attack the front row first
+  (the back row if the front is down, or if the monster is behind you), XP and levelling to 5.
+- Until saving exists (milestone 7), defeat restarts the floor with the party healed.
+  Revival at shrines and potions arrives with milestone 5.
 
 ## 6. Magic
 

@@ -102,7 +102,7 @@ function quick(i, s) {
 function togglePause() { if (started && !modalOpen && !game.defeated && !game.won) game.paused = !game.paused; }
 
 // ---- sound ---------------------------------------------------------------------------------------------------------
-function updateSoundButton() { $('soundBtn').textContent = `Sound: ${audio.isMuted() ? 'off' : 'on'} (M)`; }
+function updateSoundButton() { $('soundBtn').innerHTML = `Sound ${audio.isMuted() ? 'off' : 'on'} <span class="k">(M)</span>`; }
 function toggleSound() { audio.unlock(); audio.toggle(); updateSoundButton(); if (modalOpen) renderModal(); }
 const firstGesture = () => { audio.unlock(); audio.startAmbient(); removeEventListener('pointerdown', firstGesture); removeEventListener('keydown', firstGesture); };
 addEventListener('pointerdown', firstGesture); addEventListener('keydown', firstGesture);

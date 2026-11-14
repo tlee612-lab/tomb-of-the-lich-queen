@@ -28,6 +28,25 @@ body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.3 "Courier 
   #log { flex:1 1 100%; order:5; }
   body { padding:8px; }
 }
+#compass { order:0; } #floorName { order:1; } #pad { order:2; } #sys { order:3; } #log { order:4; }
+#nav { display:contents; }                        /* desktop: the compass, pad and system buttons sit in the controls row as before */
+/* Phones: the view, then the movement pad and system buttons right under it, then the party, then the log,
+   so the view and the controls are on screen together. */
+@media (max-width:700px) {
+  #controls { display:contents; }
+  #viewframe { order:1; justify-self:center; }
+  #nav { order:2; display:flex; gap:8px; align-items:stretch; min-width:0; }
+  #party { order:3; }
+  #floorName { order:4; }
+  #log { order:5; flex:none; min-height:64px; }
+  #pad { grid-template-columns:repeat(3,1fr); flex:1; gap:4px; }
+  #pad button { height:44px; font-size:22px; }
+  #compass { width:36px; height:auto; }
+  #sys { flex:1; grid-template-columns:1fr 1fr; gap:4px; align-self:stretch; }
+  #sys button { font-size:11px; padding:2px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .hero { padding:3px; }
+  .k { display:none; }                                  /* key hints mean nothing on a phone */
+}
 button { touch-action:manipulation; }             /* no double-tap zoom on the buttons */
 
 [hidden] { display:none !important; }

@@ -17,3 +17,9 @@ Controls: W/S move, A/D sidestep, Q/E turn, F / Space / click the view to use wh
 
 Plays the test map through the rules in `js/world.js` (doors, keys, plates, switches,
 teleporter, spinner).
+
+## Using your own data and graphics
+
+- Classes: `js/data/classes.js`. Premade heroes: `js/data/roster.js` (same shape as a created hero).
+- Portraits: put images in `assets/portraits/` and set `portrait: 'assets/portraits/name.png'` on a roster entry.
+  Without one, a letter tile is shown.

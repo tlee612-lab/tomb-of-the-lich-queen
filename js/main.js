@@ -1,11 +1,10 @@
 import { loadMap, DIR_NAMES } from './map.js';
 import { newGame, step, turn, interact, look } from './world.js';
 import { render } from './render.js';
-import { QUICK_START_PARTY } from './party.js';
+import { runSetup, portraitHTML } from './setup.js';
 
 const map = loadMap();
 const game = newGame(map);
-game.party = QUICK_START_PARTY;
 const canvas = document.getElementById('view');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -31,8 +30,10 @@ const KEYS = {
 
 function act(name) { ACTIONS[name](); flushMessages(); drawParty(); draw(); }
 
+let started = false;
 addEventListener('keydown', e => {
-  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!started || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(e.target.tagName)) return;   // typing or using a form control
   const a = KEYS[e.key.length === 1 ? e.key.toLowerCase() : e.key];
   if (a) { e.preventDefault(); act(a); }
 });
@@ -43,6 +44,7 @@ canvas.addEventListener('click', () => act('use'));   // click the view to use w
 function drawParty() {
   document.getElementById('party').innerHTML = game.party.map(h => `
     <div class="hero">
+      ${portraitHTML(h)}
       <div class="nm">${h.name}</div>
       <div class="cl">${h.class} L${h.level} · ${h.row ? 'back' : 'front'}</div>
       <div class="bar"><i style="width:${(100 * h.hp) / h.hpMax}%"></i></div>
@@ -57,9 +59,16 @@ function draw(t = performance.now()) {
 
 function loop(t) { draw(t); requestAnimationFrame(loop); }   // animates teleporter pulse
 
-look(game);
-drawParty();
-game.msgs.push('You enter the Barrow Halls. W/S move, A/D sidestep, Q/E turn, F or click to use.');
-flushMessages();
-requestAnimationFrame(loop);
+function begin(party) {
+  game.party = party;
+  started = true;
+  document.getElementById('game').hidden = false;
+  look(game);
+  drawParty();
+  game.msgs.push('You enter the Barrow Halls. W/S move, A/D sidestep, Q/E turn, F or click to use.');
+  flushMessages();
+  requestAnimationFrame(loop);
+}
+
 window.__game = { game, map, act };
+runSetup(begin);

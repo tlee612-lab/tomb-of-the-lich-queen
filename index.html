@@ -7,7 +7,26 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main id="game">
+<section id="setup" hidden>
+  <h1>Tomb of the Lich Queen</h1>
+  <p>Choose your party of four. The first two stand in the front row, the last two in the back.</p>
+  <div id="slots"></div>
+  <details id="creator">
+    <summary>Create a hero</summary>
+    <form id="createForm">
+      <label>Name <input id="cName" maxlength="14"></label>
+      <label>Class <select id="cClass"></select></label>
+      <div id="cBlurb"></div>
+      <div id="cAttrs"></div>
+      <div id="cPoints"></div>
+      <button type="submit">Add to roster</button>
+      <div id="cErr" role="alert"></div>
+    </form>
+  </details>
+  <div id="setupErr" role="alert"></div>
+  <button id="startBtn" type="button">Enter the tomb</button>
+</section>
+<main id="game" hidden>
   <div id="viewframe"><canvas id="view" width="448" height="300"></canvas></div>
   <aside id="party"></aside>
   <div id="controls">

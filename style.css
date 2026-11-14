@@ -19,7 +19,16 @@ body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.3 "Courier 
   font-size:18px; cursor:pointer; }
 #pad button:active { background:var(--edge); }
 #log { flex:1; min-height:80px; white-space:pre-line; background:var(--panel); border:2px solid var(--edge); padding:6px; }
-@media (max-width:960px) { #game { grid-template-columns:1fr; } }
+@media (max-width:960px) {
+  #game { grid-template-columns:minmax(0,1fr); }
+  #party { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .hero, #controls, #log { min-width:0; }
+  .hero button { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  #controls { flex-wrap:wrap; }
+  #log { flex:1 1 100%; order:5; }
+  body { padding:8px; }
+}
+button { touch-action:manipulation; }             /* no double-tap zoom on the buttons */
 
 [hidden] { display:none !important; }
 #setup { max-width:680px; width:100%; }

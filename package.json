@@ -1,0 +1,6 @@
+{
+  "name": "tomb-of-the-lich-queen",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node tests/walkthrough.mjs" }
+}

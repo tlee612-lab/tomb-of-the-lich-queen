@@ -11,10 +11,11 @@ const { errs, party } = formParty(quickStartParty());
 assert.deepEqual(errs, []);
 assert.deepEqual(party.map(h => h.row), [0, 0, 1, 1]);
 
-// casters start with memorized spells, fighters do not
+// casters start with memorized spells; a Warden has one Field Dressing; a Cutpurse has none
 const by = n => roster.find(h => h.name === n);
 assert.equal(by('Quillon').spellsMemorized.length, 2);
-assert.equal(by('Brannoch').spellsMemorized.length, 0);
+assert.deepEqual(by('Brannoch').spellsMemorized, ['Field Dressing']);
+assert.equal(by('Sela').spellsMemorized.length, 0);
 
 // creation rules
 const ok = { name: 'Test', class: 'Warden', attrs: { might: 12, agility: 12, wits: 11, spirit: 11 } };

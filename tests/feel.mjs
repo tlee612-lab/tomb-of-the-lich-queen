@@ -8,7 +8,7 @@ const cases = {
   'The Tomb Rat hits Brannoch for 2.': 'hurt', 'The Bone Wretch misses Sela.': 'miss', 'The Sepulchral Spider webs Ioreth for 3.': 'hurt',
   "The Veshara blasts Sela for 5.": 'hurt', 'Sela falls!': 'death', 'The party has fallen...': 'death',
   "Quillon's Cinder Dart burns the Bone Wretch for 11.": 'spell', "Quillon's Frostbind slows the Tomb Rat.": 'spell',
-  'Sanctify burns the Bone Wretch for 1.': 'spell', 'Ioreth heals Brannoch for 9.': 'heal', 'Sela drinks a healing potion (+12).': 'heal',
+  'Sanctify burns the Bone Wretch for 1.': 'spell', 'The Mire Ooze splits in two!': 'spell', 'Ioreth heals Brannoch for 9.': 'heal', 'Sela drinks a healing potion (+12).': 'heal',
   'Brannoch reaches level 2! (+7 max HP)': 'levelup', 'You pick up the bronze key.': 'pickup', 'Ioreth takes the antidote.': 'pickup',
   'You find 2 rations. (6 total)': 'pickup', 'You discover a forgotten cache! (+40 XP each)': 'pickup',
   'The door creaks open.': 'door', 'The bronze key turns. The door opens.': 'door', 'You pull the switch. Stone grinds somewhere.': 'door',
@@ -16,7 +16,7 @@ const cases = {
   'You arrive at The Cinder Court.': 'stairs', 'The party rests. Wounds close and spells are memorized anew.': 'rest',
   'The party eats a ration. (3 left)': 'munch', 'Hunger gnaws at the party.': 'munch', 'Blocked.': 'bump', 'Locked. It needs a bronze key.': 'bump',
   'A Tomb Rat blocks the way.': 'bump', 'You cannot rest with enemies near.': 'bump', 'You read an inscription, "The First Hall". (Saved to your journal: J)': 'scroll',
-  'The floor gives way! The party tumbles into a pit.': 'thud', 'The Lich Queen crumbles to ash and her dead fall still. The tomb is silent. You have won!': 'victory',
+  'The floor gives way! The party tumbles into a pit.': 'thud', "You have won! Elowen is free, and the Lich Queen's tomb is silent at last.": 'victory',
   "Brannoch's blow glances off Veshara. Her lamps still burn!": 'spell',
 };
 for (const [msg, want] of Object.entries(cases)) assert.equal(soundsFor(msg), want, `"${msg}" -> ${want}`);

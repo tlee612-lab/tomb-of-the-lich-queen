@@ -74,6 +74,30 @@ g.x = 8; g.dir = E; interact(g); assert.match(g.msgs.at(-1), /Nobody here knows/
 g = game(script(0.5), ['Brannoch', 'Dagny', 'Ioreth', 'Quillon']); goto(g, 2, 7, 2, E);
 castSpell(g, H.ioreth, 'Lantern Ward'); assert.equal(g.map.traps['9,2'].found, true);
 
+// --- the Cutpurse picks locks and spots hidden switches from afar -----------------------------------------------------
+g = game(script(0.0, 0.5)); goto(g, 0, 9, 2, E);                  // lock at 10,2 wants the bronze key; Sela has none
+interact(g); assert.equal(tileAt(g.map, 10, 2), 'L'); assert.match(g.msgs.at(-1), /fumbles/, 'a natural 1 slips');
+interact(g); assert.match(g.msgs.at(-1), /still working/);
+advance(g, 3000);
+interact(g); assert.equal(tileAt(g.map, 10, 2), 'd'); assert.match(g.msgs.at(-1), /picks the lock/);   // d20=11, +1 +3 = 15
+g = game(script(), ['Brannoch', 'Dagny', 'Ioreth', 'Quillon']); goto(g, 0, 9, 2, E);   // no Cutpurse
+interact(g); assert.equal(tileAt(g.map, 10, 2), 'L'); assert.match(g.msgs.at(-1), /Locked/);
+// the thieves' vault on floor 1: no key exists, a Cutpurse picks it (DC 14: d20=11 +1 +3 = 15), anyone else cannot
+goto(g, 0, 14, 2, E); g.bag.push('bronze', 'ember', 'redgem');
+interact(g); assert.equal(tileAt(g.map, 15, 2), 'L'); assert.match(g.msgs.at(-1), /no key was ever cut/, 'no key opens a vault');
+g = game(script(0.5)); goto(g, 0, 14, 2, E);
+interact(g); assert.equal(tileAt(g.map, 15, 2), 'd'); assert.match(g.msgs.at(-1), /picks the lock/);
+g = game(script(0.4)); goto(g, 0, 14, 2, E);                      // d20=9: 9+4 = 13, short of 14
+interact(g); assert.equal(tileAt(g.map, 15, 2), 'L'); assert.match(g.msgs.at(-1), /Try again/);
+g = game(script()); goto(g, 0, 9, 2, E); g.bag.push('bronze'); interact(g);
+assert.equal(tileAt(g.map, 10, 2), 'd'); assert.match(g.msgs.at(-1), /key turns/); assert.equal(g.party[1].cd || 0, 0, 'a key costs no time');
+
+g = game(script()); goto(g, 0, 7, 6, W);                          // the hidden switch at 4,6 is three cells ahead
+look(g); assert.equal(g.map.switches[0].found, true); assert.match(g.msgs.at(-1), /Cutpurse spots a hidden switch/);
+g = game(script(), ['Brannoch', 'Dagny', 'Ioreth', 'Quillon']); goto(g, 0, 7, 6, W);
+look(g); assert.equal(g.map.switches[0].found, false, 'without a Cutpurse it is only noticed from the next cell');
+goto(g, 0, 5, 6, W); look(g); assert.equal(g.map.switches[0].found, true);
+
 // --- ranged spiders web the party ------------------------------------------------------------------------------
 g = game(() => 0.9); goto(g, 2, 13, 2, E);
 g.enemies.push(createMonster('sepulchral_spider', 16, 2)); g.enemies[0].atkCd = 0;
@@ -113,7 +137,7 @@ assert.ok(g.party[H.brannoch].hp === g.party[H.brannoch].hpMax && g.party[H.sela
 g = game(); goto(g, 1, 9, 1, E); step(g, 1, 0);
 assert.deepEqual(g.bag, ['redgem']); assert.match(g.msgs.at(-1), /ruby/);
 g = game(); goto(g, 1, 14, 9, E); g.map.grid[9][14] = 'g'; step(g, 1, 0);
-assert.ok(g.party.every(h => h.xp === 50), 'bonus xp goes to every living hero'); assert.match(g.msgs.join('|'), /drowned reliquary/);
+assert.ok(g.party.every(h => h.xp === 25), 'bonus xp goes to every living hero'); assert.match(g.msgs.join('|'), /drowned reliquary/);
 
 // --- the Lich Queen -------------------------------------------------------------------------------------------------------------
 g = game(); goto(g, 3, 7, 4, N, true);
@@ -154,9 +178,15 @@ g.enemies.push(createMonster('bone_wretch', 7, 1));
 g.fx.push({ cell: { x: 7, y: 3 }, text: 'x', color: '#fff', ttl: 900, age: 0 });
 assert.equal(g.won, false, 'not won while the Queen lives');
 g.rng = script(ROLL15, 0.9); heroAttack(g, H.brannoch);
-assert.equal(g.won, true); assert.match(g.msgs.join('|'), /You have won/);
+assert.equal(g.queenDown, true); assert.equal(g.won, false, 'the Queen falling is not yet the end');
+assert.match(g.msgs.join('|'), /gate grinds open/); assert.equal(tileAt(g.map, 10, 5), 'g', 'the princess\'s gate opens');
 assert.equal(g.enemies.length, 0, 'her summoned dead fall with her'); assert.equal(g.fx.length, 0, 'floating text is cleared');
+// the reward: walk to the gate and free the princess
+goto(g, 3, 10, 5, S, true); interact(g);
+assert.equal(g.won, true); assert.match(g.msgs.join('|'), /You have won/); assert.equal(g.party.length, 4, 'she does not join the party');
 const t0 = g.party[0].cd; tick(g, 5000); advance(g, 5000); assert.equal(g.party[0].cd, t0, 'the world freezes after victory');
+// before the Queen falls the gate is shut and the princess cannot be reached
+g = game(); goto(g, 3, 10, 4, S); step(g, 1, 0); assert.equal(g.y, 4, 'the gate holds');
 
 // --- inscriptions and the journal ---------------------------------------------------------------------------------------------
 g = game(); assert.equal(g.journal.length, 0);
@@ -184,5 +214,43 @@ g.party.forEach(h => { h.hp = 0; }); tick(g, 10); assert.equal(g.defeated, true)
 retry(g);
 assert.equal(g.floor, 2); assert.deepEqual([g.x, g.y], [1, 1]); assert.equal(g.enemies.length, g.floors[2].monsters.length, 'the floor is repopulated');
 assert.ok(g.party.every(h => h.hp === h.hpMax && !h.poisonMs && !h.webMs));
+
+// --- one-way doors: a handle on one side only, and they stay open ------------------------------------------------
+g = game(); goto(g, 0, 9, 8, E);                       // the key-room side of floor 1's one-way door at 10,8
+assert.equal(tileAt(g.map, 10, 8), 'W');
+step(g, 1, 0); assert.match(g.msgs.at(-1), /no handle/); assert.equal(tileAt(g.map, 10, 8), 'W', 'wrong side: it stays shut');
+assert.deepEqual([g.x, g.y], [9, 8]);
+goto(g, 0, 11, 8, W);                                  // the far side, facing west
+step(g, 1, 0); assert.equal(tileAt(g.map, 10, 8), 'd', 'right side: it opens');
+step(g, 1, 0); assert.deepEqual([g.x, g.y], [10, 8], 'and can be walked through');
+goto(g, 0, 9, 8, E); step(g, 1, 0); assert.deepEqual([g.x, g.y], [10, 8], 'once open it stays open from both sides');
+g = game(); goto(g, 0, 11, 8, N); interact(g);         // standing on the right cell but facing the wrong way
+assert.equal(tileAt(g.map, 10, 8), 'W');
+
+// --- prisoners: the fifth slot ------------------------------------------------------------------------------------
+g = game(); goto(g, 1, 3, 10, W);                      // standing in Tavin's open cell doorway, facing him
+g.floors[1].grid[10][3] = 'd';
+assert.equal(g.party.length, 4);
+for (const h of g.party) { h.level = 3; }              // party average level 3
+interact(g);
+assert.equal(g.party.length, 5, 'the prisoner joins');
+const tavin = g.party[4];
+assert.equal(tavin.name, 'Tavin'); assert.equal(tavin.npc, true); assert.equal(tavin.level, 3, 'joins at the party level');
+assert.equal(tavin.hp, Math.ceil(tavin.hpMax / 2), 'weak from captivity');
+assert.equal(g.floors[1].npcs[0].freed, true);
+assert.equal(tileAt(g.map, 2, 10), '.');
+step(g, 1, 0); assert.deepEqual([g.x, g.y], [2, 10], 'the cell is empty now and can be walked into');
+goto(g, 1, 3, 12, W); g.floors[1].grid[12][3] = 'd'; interact(g);
+assert.equal(g.party.length, 5, 'only one fits'); assert.match(g.msgs.at(-1), /already travel with Tavin/);
+assert.equal(g.floors[1].npcs[1].freed, false);
+// XP is shared among the four, not thinned by the fifth
+g = game(); goto(g, 1, 3, 10, W); g.floors[1].grid[10][3] = 'd'; interact(g);
+const xp0 = g.party.map(h => h.xp);
+kill(g, createMonster('bone_wretch', 5, 5));
+assert.equal(g.party[0].xp - xp0[0], Math.ceil(MONSTERS.bone_wretch.xp / 4), 'NPC does not thin the XP share');
+assert.ok(g.party[4].xp > xp0[4]);
+// a fallen NPC counts in the party like anyone, but the party falls only when all five do
+g.party.slice(0, 4).forEach(h => { h.hp = 0; }); tick(g, 100); assert.equal(g.defeated, false);
+g.party[4].hp = 0; tick(g, 100); assert.equal(g.defeated, true);
 
 console.log('dungeon ok');

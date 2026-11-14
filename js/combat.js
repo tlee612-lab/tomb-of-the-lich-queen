@@ -2,12 +2,17 @@
 import { DX, DY, isSolid } from './map.js';
 import { MONSTERS } from './data/monsters.js';
 import { WEAPONS } from './data/weapons.js';
-import { slotsFor, loadoutFor } from './spellbook.js';
+import { slotsFor, loadoutFor, learnedAt } from './spellbook.js';
+import { diff } from './difficulty.js';
 
 const mod = v => Math.floor((v - 10) / 2);
 export const XP_LEVELS = [0, 50, 130, 260, 420];   // XP_LEVELS[n] = XP needed to leave level n
 export const MAX_LEVEL = 5;
 export const POISON_MS = 10000, POISON_TICK = 2000, WEB_MS = 4000;
+// Cutpurse backstab: extra dice on a monster that has not yet fought (nobody has hit it and it has not attacked)
+// or that is slowed. It is added before a crit doubles the blow.
+export const BACKSTAB = [2, 6, 0];
+export const canBackstab = (h, e) => h.class === 'Cutpurse' && (!e.engaged || e.slowMs > 0);
 
 export const d20 = g => Math.floor(g.rng() * 20) + 1;
 export const dice = (g, [n, s, b]) => { let t = b; for (let i = 0; i < n; i++) t += Math.floor(g.rng() * s) + 1; return t; };
@@ -15,13 +20,14 @@ const say = (g, m) => g.msgs.push(m);
 export const addFx = (g, cell, text, color) => g.fx.push({ cell: { x: cell.x, y: cell.y }, text, color, ttl: 900, age: 0 });
 
 export const alive = h => h.hp > 0;
-export const heroDefense = h => 10 + mod(h.attrs.agility) + (h.armor || 0);
+export const BULWARK_DEF = 3;
+export const heroDefense = h => 10 + mod(h.attrs.agility) + (h.armor || 0) + (h.bulwarkMs > 0 ? BULWARK_DEF : 0);
 export const enemyAt = (g, x, y) => g.enemies.find(e => e.hp > 0 && e.x === x && e.y === y);
 export const enemyAhead = g => enemyAt(g, g.x + DX[g.dir], g.y + DY[g.dir]);
 
 export function createMonster(type, x, y) {
   const t = MONSTERS[type];
-  return { type, name: t.name, x, y, hp: t.hp, hpMax: t.hp, atkCd: t.atkMs, moveCd: t.moveMs, flash: 0, slowMs: 0, phase: 0 };
+  return { type, name: t.name, x, y, hp: t.hp, hpMax: t.hp, atkCd: t.atkMs, moveCd: t.moveMs, flash: 0, slowMs: 0, phase: 0, engaged: false };
 }
 export const buildEnemies = map => map.monsters.map(s => createMonster(s.type, s.x, s.y));
 export function spawnEnemies(g) { g.map.enemies = buildEnemies(g.map); g.enemies = g.map.enemies; }
@@ -33,7 +39,7 @@ export const isWarded = (g, e) => !!MONSTERS[e.type].wardedByLamps && g.map.lamp
 // and calls kill() when hp reaches 0, so messages read in order.
 export function strike(g, e, dmg) {
   if (isWarded(g, e)) { addFx(g, e, 'warded', '#8cc8ff'); return 0; }
-  e.hp -= dmg; e.flash = 150;
+  e.hp -= dmg; e.flash = 150; e.engaged = true;
   return dmg;
 }
 
@@ -54,19 +60,45 @@ export function gainXp(g, h, n) {
     const up = Math.max(3, 4 + mod(h.attrs.might));
     h.hpMax += up; h.hp = Math.min(h.hpMax, h.hp + up);
     say(g, `${h.name} reaches level ${h.level}! (+${up} max HP)`);
+    for (const s of learnedAt(h, h.level)) {
+      h.spellsKnown.push(s);
+      say(g, `${h.name} learns ${s}! Memorize it in the menu's Spells tab, then rest.`);
+    }
     const lo = loadoutFor(h);                                   // casters gain a memorized slot
     while (h.spellsMemorized.length < slotsFor(h)) h.spellsMemorized.push(lo[h.spellsMemorized.length]);
   }
+}
+
+export const MAX_OOZES = 8;      // a floor never holds more living splitting monsters than this
+
+// A burned monster that can split divides what is left of its health with a new one on a free cell beside it.
+// The new one is worth no XP, so burning an ooze over and over cannot be farmed. Returns the new monster or null.
+export function splitOoze(g, e) {
+  if (!MONSTERS[e.type].splits || e.hp < 4) return null;
+  if (g.enemies.filter(x => x.hp > 0 && MONSTERS[x.type].splits).length >= MAX_OOZES) return null;
+  for (let d = 0; d < 4; d++) {
+    const x = e.x + DX[d], y = e.y + DY[d];
+    if (isSolid(g.map, x, y) || enemyAt(g, x, y) || (x === g.x && y === g.y) || '<>X'.includes(g.map.grid[y]?.[x])) continue;
+    const half = Math.floor(e.hp / 2), spawn = createMonster(e.type, x, y);
+    spawn.hp = spawn.hpMax = half; spawn.spawn = true; spawn.engaged = true; spawn.atkCd = 1200; spawn.slowMs = e.slowMs;
+    e.hp -= half;
+    g.enemies.push(spawn);
+    say(g, `The ${e.name} splits in two!`);
+    return spawn;
+  }
+  return null;
 }
 
 export function kill(g, e) {
   const t = MONSTERS[e.type];
   say(g, `${e.name} is destroyed.`);
   const living = g.party.filter(alive);
-  for (const h of living) gainXp(g, h, Math.ceil(t.xp / living.length));
+  const sharers = Math.max(1, living.filter(h => !h.npc).length);   // a freed prisoner shares in XP without thinning the others' share
+  for (const h of living) gainXp(g, h, e.spawn ? 0 : Math.ceil(t.xp / sharers));   // a split-off ooze is worth nothing
   if (e.type === 'veshara') {
-    g.won = true; g.fx = []; g.enemies.length = 0;               // her summoned dead fall with her
-    say(g, 'The Lich Queen crumbles to ash and her dead fall still. The tomb is silent. You have won!');
+    g.queenDown = true; g.fx = []; g.enemies.length = 0;         // her summoned dead fall with her
+    if (g.map.rescue) { const [rx, ry] = g.map.rescue; if (g.map.grid[ry][rx] === 'G') g.map.grid[ry][rx] = 'g'; }
+    say(g, 'The Lich Queen crumbles to ash and her dead fall still. Somewhere in the chamber, a gate grinds open.');
   }
 }
 
@@ -82,13 +114,14 @@ export function heroAttack(g, i) {
     say(g, `${h.name} misses the ${e.name}.`); addFx(g, e, 'miss', '#bbb');
     return { ok: true, hit: false };
   }
-  let dmg = Math.max(1, dice(g, w.dice) + mod(stat));
+  const stab = canBackstab(h, e);
+  let dmg = Math.max(1, dice(g, w.dice) + mod(stat) + (stab ? dice(g, BACKSTAB) : 0));
   if (roll === 20) dmg *= 2;
   if (!strike(g, e, dmg)) {
     say(g, `${h.name}'s blow glances off ${e.name}. Her lamps still burn!`);
     return { ok: true, hit: false, warded: true };
   }
-  say(g, `${h.name} ${roll === 20 ? 'crits' : 'hits'} the ${e.name} for ${dmg}.`);
+  say(g, `${h.name} ${stab ? 'backstabs' : roll === 20 ? 'crits' : 'hits'} the ${e.name} for ${dmg}.`);
   addFx(g, e, String(dmg), roll === 20 ? '#ffd24a' : '#fff');
   if (e.hp <= 0) kill(g, e);
   return { ok: true, hit: true, dmg };
@@ -144,12 +177,17 @@ function pickTarget(g, e) {
 function enemyAttack(g, e, ranged) {
   const t = MONSTERS[e.type], h = pickTarget(g, e);
   if (!h) return;
+  e.engaged = true;
   const roll = d20(g);
   if (roll === 1 || (roll !== 20 && roll + t.atk < heroDefense(h))) {
     h.hurt = { text: 'miss', ttl: 800 }; say(g, `The ${e.name} ${ranged ? 'shoots wide of' : 'misses'} ${h.name}.`); return;
   }
+  if (h.veil) {                                                  // Mirror Veil: the blow is absorbed whole
+    h.veil = false; h.hurt = { text: 'veiled', ttl: 800 };
+    say(g, `${h.name}'s Mirror Veil shatters, absorbing the ${e.name}'s blow.`); return;
+  }
   const base = ranged?.bolt || t.dmg;
-  const dmg = Math.max(1, dice(g, base) * (roll === 20 ? 2 : 1));
+  const dmg = Math.max(1, Math.round(dice(g, base) * (roll === 20 ? 2 : 1) * diff(g).enemyDmg));
   h.hp = Math.max(0, h.hp - dmg); h.hurt = { text: `-${dmg}`, ttl: 800 };
   say(g, `The ${e.name} ${ranged ? (ranged.web ? 'webs' : 'blasts') : 'hits'} ${h.name} for ${dmg}.`);
   if (ranged?.web && h.hp > 0) { h.webMs = WEB_MS; say(g, `${h.name} is caught in sticky web!`); }
@@ -164,6 +202,7 @@ export function tick(g, dt) {
     const hdt = h.webMs > 0 ? dt / 2 : dt;                      // webbed heroes act at half speed
     if (h.cd > 0) h.cd = Math.max(0, h.cd - hdt);
     if (h.webMs > 0) h.webMs = Math.max(0, h.webMs - dt);
+    if (h.bulwarkMs > 0) h.bulwarkMs = Math.max(0, h.bulwarkMs - dt);
     if (h.hurt && (h.hurt.ttl -= dt) <= 0) h.hurt = null;
     if (h.poisonMs > 0) {
       if (!alive(h)) { h.poisonMs = 0; continue; }
@@ -209,7 +248,7 @@ export function tick(g, dt) {
 
 // Until saving exists (milestone 7), defeat restarts the current floor with the party healed.
 export function retry(g) {
-  for (const h of g.party) { h.hp = h.hpMax; h.cd = 0; h.hurt = null; h.poisonMs = 0; h.webMs = 0; }
+  for (const h of g.party) { h.hp = h.hpMax; h.cd = 0; h.hurt = null; h.poisonMs = 0; h.webMs = 0; h.bulwarkMs = 0; h.veil = false; }
   g.x = g.map.start.x; g.y = g.map.start.y; g.dir = g.map.start.dir;
   g.fx = []; spawnEnemies(g); g.defeated = false;
   say(g, 'You wake at the floor entrance, wounded in spirit only.');

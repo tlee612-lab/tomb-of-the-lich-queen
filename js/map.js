@@ -6,6 +6,7 @@
 //   'L' locked door (needs a key; see map.locks)
 //   'G' closed gate (opened by a plate or switch)   'g' open gate
 //   'M' gem-socket door (see map.sockets)
+//   'W' one-way door: opens only from one side (map.oneway['x,y'] = the direction you must be travelling), then stays open
 //   'P' pressure plate  'T' teleporter  'O' spinner
 //   'H' shrine (stand on it, press F)
 //   'X' hidden pit trap     '<' '>' stairs up / down (see map.stairs)
@@ -13,7 +14,7 @@ export const DX = [0, 1, 0, -1];
 export const DY = [-1, 0, 1, 0];
 export const DIR_NAMES = ['N', 'E', 'S', 'W'];
 
-export const SOLID = new Set(['#', 'D', 'L', 'G', 'M']);
+export const SOLID = new Set(['#', 'D', 'L', 'G', 'M', 'W']);
 
 // A floor spec is either `rows` (strings) or `w`,`h`,`carve` (rectangles of floor) plus `set` (special tiles).
 export function buildMap(spec) {
@@ -35,12 +36,13 @@ export function buildMap(spec) {
   const copy = o => JSON.parse(JSON.stringify(o ?? null));
   return {
     name: spec.name || 'Unnamed', dark: !!spec.dark, grid, w: grid[0].length, h: grid.length, start,
-    items: copy(spec.items) || [], locks: copy(spec.locks) || {},
+    items: copy(spec.items) || [], locks: copy(spec.locks) || {}, oneway: copy(spec.oneway) || {},
     plates: (copy(spec.plates) || []).map(p => ({ ...p, pressed: false })),
     switches: (copy(spec.switches) || []).map(s => ({ ...s, found: !s.hidden, on: false })),
     teleports: copy(spec.teleports) || [], monsters: copy(spec.monsters) || [], shrines: copy(spec.shrines) || [],
     stairs: copy(spec.stairs) || [], sockets: copy(spec.sockets) || {},
-    lamps: (copy(spec.lamps) || []).map(l => ({ ...l, lit: true })), traps,
+    lamps: (copy(spec.lamps) || []).map(l => ({ ...l, lit: true })), traps, rescue: spec.rescue || null,
+    npcs: (copy(spec.npcs) || []).map(n => ({ ...n, freed: false })),
     inscriptions: (copy(spec.inscriptions) || []).map(i => ({ ...i, seen: false })),
   };
 }

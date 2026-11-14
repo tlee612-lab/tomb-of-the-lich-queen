@@ -51,7 +51,7 @@ assert.equal(r.enemies, r.map.enemies, 'the live enemy list is the floor\'s list
 assert.equal(r.floors[1].enemies.length, g.floors[1].monsters.length); assert.equal(tileAt(r.floors[1], 13, 10), 'M');
 assert.equal(r.floors[3].lamps.every(l => l.lit), true);
 // static data is rebuilt from the floor definitions, not trusted from the file
-assert.equal(r.map.stairs.length, 2); assert.deepEqual(Object.keys(r.floors[0].locks), ['10,2']);
+assert.equal(r.map.stairs.length, 2); assert.deepEqual(Object.keys(r.floors[0].locks), ['10,2', '15,2']);
 
 // ---- the restored game keeps playing -----------------------------------------------------------------------------------
 r.enemies.length = 0;
@@ -97,5 +97,16 @@ const f = fresh(); f.enemies.length = 0; f.enemies.push(createMonster('tomb_rat'
 const rf = restore(JSON.parse(JSON.stringify(serialize(f))), () => 0.9);
 assert.equal(rf.enemies.length, 1); assert.equal(rf.party[0].cd, 800);
 rf.enemies[0].atkCd = 0; tick(rf, 10); assert.ok(rf.party.some(h => h.hp < h.hpMax), 'restored monsters still attack');
+
+// ---- a freed prisoner survives a save ---------------------------------------------------------------------------------
+{
+  const p = fresh(); changeFloor(p, { floor: 1, x: 3, y: 10, dir: 3 }); p.floors[1].grid[10][3] = 'd'; interact(p);
+  assert.equal(p.party.length, 5);
+  const back = restore(JSON.parse(JSON.stringify(serialize(p))));
+  assert.ok(back, 'a five-hero save is valid');
+  assert.equal(back.party.length, 5); assert.equal(back.party[4].name, 'Tavin'); assert.equal(back.party[4].npc, true);
+  assert.equal(back.floors[1].npcs[0].freed, true, 'the cell stays empty after loading');
+  assert.equal(back.floors[1].npcs[1].freed, false);
+}
 
 console.log('save ok');

@@ -2,6 +2,8 @@
 //   node tools/balance.mjs [runs] [--variant=name] [--json]
 // The bot is a competent but not expert player: it fights what hunts it, heals, drinks potions, rests and prays.
 // Results are a proxy for difficulty, not a promise about how any human will do.
+import { pathToFileURL } from 'node:url';
+import { setDifficulty } from '../js/difficulty.js';
 import { loadCampaign } from '../js/data/floors.js';
 import { DX, DY, tileAt, SOLID } from '../js/map.js';
 import { MONSTERS } from '../js/data/monsters.js';
@@ -34,6 +36,12 @@ export const VARIANTS = {
   'no-healer':  { spells: true,  potions: true,  rest: true,  items: 'all',  party: 'no-healer', restHero: 0.5, restAvg: 0.7 },
   'no-cutpurse':{ spells: true,  potions: true,  rest: true,  items: 'all',  party: 'no-cutpurse', restHero: 0.5, restAvg: 0.7 },
   'no-mage':    { spells: true,  potions: true,  rest: true,  items: 'all',  party: 'no-mage', restHero: 0.5, restAvg: 0.7 },
+  // the difficulty setting (js/difficulty.js): the same players on Easy and Hard
+  'average-easy': { spells: true, potions: true, rest: true, items: 'visible', party: 'standard', restHero: 0.3, restAvg: 0.5, difficulty: 'easy' },
+  'careless-easy': { spells: false, potions: false, rest: false, items: 'none', party: 'standard', difficulty: 'easy' },
+  'rush-easy':  { spells: true,  potions: true,  rest: true,  items: 'visible', party: 'standard', restHero: 0.5, restAvg: 0.7, difficulty: 'easy' },
+  'careful-hard': { spells: true, potions: true, rest: true, items: 'all', party: 'standard', restHero: 0.5, restAvg: 0.7, difficulty: 'hard' },
+  'rush-hard':  { spells: true,  potions: true,  rest: true,  items: 'visible', party: 'standard', restHero: 0.5, restAvg: 0.7, difficulty: 'hard' },
 };
 
 class Over extends Error { constructor(kind) { super(kind); this.kind = kind; } }
@@ -42,6 +50,7 @@ export function simulate(seed, opts, pace = 'quick') {
   const { STEP_MS, TURN_MS, USE_MS, REACT_MS, REST_MS, DWELL_MS } = PACES[pace];
   const rng = mulberry32(seed);
   const g = newGame(loadCampaign(), rng);
+  setDifficulty(g, opts.difficulty || 'normal', { fresh: true });
   const all = rosterHeroes();
   g.party = formParty(PARTIES[opts.party].map(n => all.find(h => h.name === n))).party;
   let now = 0;
@@ -60,7 +69,7 @@ export function simulate(seed, opts, pace = 'quick') {
       const dt = Math.min(100, ms); advance(g, dt); now += dt; ms -= dt;
       for (const m of g.msgs.splice(0)) seenMsg(m);
       stat.minAvg = Math.min(stat.minAvg, avgHp()); if (g.floor === 3) { stat.queenSeconds += dt / 1000; if (g.map.lamps.some(l => l.lit)) stat.lampSeconds += dt / 1000; }
-      if (g.won) throw new Over('won');
+      if (g.won || g.queenDown) throw new Over('won');   // the Queen's death is the fight; freeing the princess afterward is a walk
       if (g.defeated) throw new Over('defeated');
       if (now > TIME_CAP_MS) throw new Over('timeout');
     }
@@ -116,11 +125,14 @@ export function simulate(seed, opts, pace = 'quick') {
 
   function healAllies(thresh) {
     if (!opts.spells) return false;
-    const idx = g.party.findIndex(h => alive(h) && h.class === 'Votary' && memorizedCount(h, "Mender's Touch") && !h.cd);
-    if (idx < 0) return false;
     let worst = -1, ratio = thresh;
     g.party.forEach((h, i) => { if (alive(h) && h.hp / h.hpMax < ratio) { ratio = h.hp / h.hpMax; worst = i; } });
-    return worst >= 0 && castSpell(g, idx, "Mender's Touch", worst).ok;
+    if (worst < 0) return false;
+    for (const spell of ["Mender's Touch", 'Field Dressing']) {          // the Votary first, then a Warden's field medicine
+      const idx = g.party.findIndex(h => alive(h) && memorizedCount(h, spell) && !h.cd);
+      if (idx >= 0 && castSpell(g, idx, spell, worst).ok) return true;
+    }
+    return false;
   }
   function usePotions() {
     if (!opts.potions) return false;
@@ -151,10 +163,12 @@ export function simulate(seed, opts, pace = 'quick') {
         g.party.forEach((h, i) => {
           if (!alive(h) || h.cd > 0 || h.class !== 'Magister') return;
           if (strong && !e.slowMs && memorizedCount(h, 'Frostbind') && castSpell(g, i, 'Frostbind').ok) return;
-          if (e.hp > 5 && memorizedCount(h, 'Cinder Dart')) castSpell(g, i, 'Cinder Dart');
+          if (e.hp > 5 && !MONSTERS[e.type].splits && memorizedCount(h, 'Cinder Dart')) castSpell(g, i, 'Cinder Dart');   // a sensible player does not burn an ooze
         });
       }
-      g.party.forEach((_, i) => { if (canAct(g, i).ok && enemyAhead(g)) heroAttack(g, i); });
+      // a competent player opens with the Cutpurse, so the backstab bonus on a fresh foe is not wasted on someone else's blow
+      const order = g.party.map((h, i) => i).sort((a, b) => (g.party[b].class === 'Cutpurse') - (g.party[a].class === 'Cutpurse'));
+      order.forEach(i => { if (canAct(g, i).ok && enemyAhead(g)) heroAttack(g, i); });
     }
     wait(REACT_MS);
   }
@@ -244,22 +258,32 @@ export function simulate(seed, opts, pace = 'quick') {
   const take = pts => pts.forEach(([x, y]) => goTo(x, y));
 
   const T = opts.items === 'all', V = opts.items !== 'none';     // T: secret caches too; V: loose items in the open
+  // A thieves' vault: only a living Cutpurse can pick the lock (a few tries), then the bot takes what is inside.
+  function vault(x, y, face, pts) {
+    if (!T || !g.party.some(h => alive(h) && h.class === 'Cutpurse')) return;
+    goTo(x, y); if (g.x !== x || g.y !== y) return;
+    const [dx, dy] = [x + DX[face], y + DY[face]];
+    for (let n = 0; n < 12 && tileAt(g.map, dx, dy) === 'L'; n++) { turnToward(face); interact(g); wait(3000); }
+    if (tileAt(g.map, dx, dy) !== 'L') take(pts);
+  }
   const ROUTES = [
     () => {                                                      // 1. The Barrow Halls
       goTo(9, 8); act(9, 2, 1);
       goTo(12, 2); if (V) take([[14, 1], [14, 3]]);
+      vault(14, 2, 1, [[16, 1], [16, 2]]);
       if (T) { act(5, 6, 3); take([[1, 8], [1, 9], [2, 9]]); }
       pray(11, 9); goTo(12, 12);
     },
     () => {                                                      // 2. The Drowned Ossuary
       if (V) take([[3, 1], [2, 3], [7, 3]]);
-      goTo(10, 1); pray(10, 3); goTo(6, 6); goTo(2, 8); goTo(1, 6);
+      goTo(10, 1); pray(10, 3); vault(10, 2, 1, [[12, 1], [13, 1]]); goTo(6, 6); goTo(2, 8); goTo(1, 6);
       goTo(13, 9); turnToward(2); step(g, 1, 0); wait(USE_MS);
       if (T) { act(13, 8, 1); take([[15, 9], [16, 9], [16, 10]]); }
       goTo(13, 12);
     },
     () => {                                                      // 3. The Cinder Court (dark, with pits)
       if (V) take([[2, 3]]);
+      vault(2, 3, 2, [[1, 5], [3, 5]]);
       goTo(16, 1); if (T) { act(16, 2, 1); take([[13, 5], [12, 5]]); }
       goTo(13, 9); pray(11, 10);
       goTo(9, 8);                                                // through the ember door: the guards come for us
@@ -325,7 +349,7 @@ export function report(summaries) {
   return lines.join('\n');
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const runs = +(process.argv.find(a => /^\d+$/.test(a)) || 100);
   const only = (process.argv.find(a => a.startsWith('--variant=')) || '').split('=')[1];
   const pace = (process.argv.find(a => a.startsWith('--pace=')) || '--pace=quick').split('=')[1];

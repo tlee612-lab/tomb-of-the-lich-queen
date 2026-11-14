@@ -2,8 +2,9 @@
 import { DX, DY, isSolid } from './map.js';
 import { MONSTERS } from './data/monsters.js';
 import { SPELLS } from './data/spells.js';
-import { alive, enemyAhead, enemyAt, distances, createMonster, kill, dice, addFx, tick, strike } from './combat.js';
+import { alive, enemyAhead, enemyAt, distances, createMonster, kill, dice, addFx, tick, strike, splitOoze } from './combat.js';
 import { loadoutFor } from './spellbook.js';
+import { diff } from './difficulty.js';
 
 const mod = v => Math.floor((v - 10) / 2);
 const say = (g, m) => g.msgs.push(m);
@@ -12,8 +13,8 @@ const hurtText = (h, text) => { h.hurt = { text, ttl: 800, good: text.startsWith
 export const HUNGER_MS = 150000;      // the party eats one ration this often
 export const STARVE_MS = 20000;       // while starving, each hero loses 1 HP this often (never below 1)
 export const SANCTIFY_MS = 2000;
-export const REST_HEAL = 0.5;         // fraction of max HP restored by a full rest
-export const WANDERER_CHANCE = 0.25;
+export const REST_HEAL = 0.5;         // Normal: fraction of max HP restored by a full rest (js/difficulty.js has the others)
+export const WANDERER_CHANCE = 0.25;  // Normal: chance a rest is interrupted
 
 // ---- spells ----------------------------------------------------------------------------------
 
@@ -33,20 +34,35 @@ export function castSpell(g, i, name, targetIdx) {
   } else if (sp.target === 'ally') {
     target = g.party[targetIdx];
     if (!target || !alive(target)) return { ok: false, why: 'Choose a living ally.' };
-    if (target.hp >= target.hpMax) return { ok: false, why: `${target.name} is unhurt.` };
+    if (sp.heal && target.hp >= target.hpMax) return { ok: false, why: `${target.name} is unhurt.` };
+    if (sp.cure && !target.poisonMs && !target.webMs) return { ok: false, why: `${target.name} is not poisoned or webbed.` };
+    if (sp.defMs && target.bulwarkMs > 0) return { ok: false, why: `${target.name} is already shielded.` };
+    if (sp.veil && target.veil) return { ok: false, why: `${target.name} is already veiled.` };
   }
 
   h.spellsMemorized.splice(h.spellsMemorized.indexOf(name), 1);          // spend the slot
   h.cdMax = h.cd = sp.cd;
 
-  if (sp.dmg) {
-    const dmg = Math.max(1, dice(g, sp.dmg) + mod(h.attrs[sp.stat]));
-    if (!strike(g, target, dmg)) say(g, `${h.name}'s ${name} fizzles against the Queen's ward!`);
-    else {
-      say(g, `${h.name}'s ${name} burns the ${target.name} for ${dmg}.`);
-      addFx(g, target, String(dmg), '#ff9a3c');
-      if (target.hp <= 0) kill(g, target);
-    }
+  if (sp.push) {
+    gale(g, h, name, sp);
+  } else if (sp.chain) {
+    zap(g, h, name, sp, target);
+    const dist = e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y);
+    const next = g.enemies.filter(e => e.hp > 0 && e !== target && dist(e) <= 2).sort((a, b) => dist(a) - dist(b))[0];
+    if (next) zap(g, h, name, sp, next);
+  } else if (sp.dmg) {
+    zap(g, h, name, sp, target);
+  } else if (sp.sight) {
+    dreadSight(g, h, name, target);
+  } else if (sp.cure) {
+    target.poisonMs = 0; target.webMs = 0; hurtText(target, '+');
+    say(g, `${h.name}'s ${name} frees ${target.name} of poison and web.`);
+  } else if (sp.defMs) {
+    target.bulwarkMs = sp.defMs; hurtText(target, '+DEF');
+    say(g, `${h.name}'s ${name} hardens ${target.name}'s guard.`);
+  } else if (sp.veil) {
+    target.veil = true; hurtText(target, 'veil');
+    say(g, `${h.name} wraps ${target.name} in a Mirror Veil.`);
   } else if (sp.slowMs) {
     target.slowMs = sp.slowMs;
     say(g, `${h.name}'s ${name} slows the ${target.name}.`);
@@ -68,6 +84,44 @@ export function castSpell(g, i, name, targetIdx) {
     say(g, found ? `${h.name} casts ${name}. Hidden things shimmer into view!` : `${h.name} casts ${name}. The way brightens.`);
   }
   return { ok: true };
+}
+
+// One spell hit on one enemy. Returns true if it landed.
+function zap(g, h, name, sp, e) {
+  const dmg = Math.max(1, dice(g, sp.dmg) + mod(h.attrs[sp.stat]));
+  if (!strike(g, e, dmg)) { say(g, `${h.name}'s ${name} fizzles against the Queen's ward!`); return false; }
+  say(g, `${h.name}'s ${name} ${sp.chain ? 'shocks' : sp.fire ? 'burns' : 'batters'} the ${e.name} for ${dmg}.`);
+  addFx(g, e, String(dmg), sp.chain ? '#bfe6ff' : '#ff9a3c');
+  if (e.hp <= 0) kill(g, e); else if (sp.fire) splitOoze(g, e);
+  return true;
+}
+
+// Gale Burst: every enemy in the line ahead (three cells) is hit, then shoved back a step and staggered.
+function gale(g, h, name, sp) {
+  const line = [];
+  for (let k = 1; k <= 3; k++) {
+    const x = g.x + DX[g.dir] * k, y = g.y + DY[g.dir] * k;
+    if (isSolid(g.map, x, y)) break;
+    const e = enemyAt(g, x, y); if (e) line.push(e);
+  }
+  for (const e of line.reverse()) {                                  // farthest first so the rest have room
+    if (!zap(g, h, name, sp, e) || e.hp <= 0) continue;
+    const x = e.x + DX[g.dir], y = e.y + DY[g.dir];
+    if (!isSolid(g.map, x, y) && !enemyAt(g, x, y) && !'<>X'.includes(g.map.grid[y]?.[x])) { e.x = x; e.y = y; }
+    e.moveCd += 1500; e.atkCd += 1500;
+  }
+}
+
+// Dread Sight: nearby enemies show a health bar until they fall; the target's weaknesses are written out.
+function dreadSight(g, h, name, target) {
+  for (const e of g.enemies) if (e.hp > 0 && Math.abs(e.x - g.x) + Math.abs(e.y - g.y) <= 6) e.seen = true;
+  const t = MONSTERS[target.type], weak = [];
+  if (t.undead) weak.push('undead, so Sanctify burns it');
+  if (t.splits) weak.push('splits when burned');
+  if (t.poison) weak.push('poisons');
+  if (t.ranged) weak.push('shoots from range');
+  if (t.wardedByLamps) weak.push(g.map.lamps.some(l => l.lit) ? 'warded while any lamp burns' : 'her ward is down');
+  say(g, `${h.name}'s ${name}: the ${target.name} has ${target.hp}/${target.hpMax} HP, defense ${t.def}${weak.length ? '; ' + weak.join('; ') : ''}.`);
 }
 
 // ---- potions and quick slots --------------------------------------------------------------------
@@ -124,7 +178,7 @@ export function rest(g) {
   g.rations--;
   // a wanderer may interrupt: it appears two or three steps away and the rest only half works
   let spawn = null;
-  if (g.rng() < WANDERER_CHANCE) {
+  if (g.rng() < diff(g).wanderer) {
     const cells = [];
     for (let y = 0; y < g.map.h; y++) for (let x = 0; x < g.map.w; x++) {
       if (dist[y][x] >= 2 && dist[y][x] <= 3 && !enemyAt(g, x, y)) cells.push([x, y]);
@@ -132,7 +186,7 @@ export function rest(g) {
     if (cells.length) spawn = cells[Math.floor(g.rng() * cells.length)];
   }
   const factor = spawn ? 0.5 : 1;
-  for (const h of g.party.filter(alive)) { h.hp = Math.min(h.hpMax, h.hp + Math.ceil(h.hpMax * REST_HEAL * factor)); if (!spawn) h.poisonMs = 0; }
+  for (const h of g.party.filter(alive)) { h.hp = Math.min(h.hpMax, h.hp + Math.ceil(h.hpMax * diff(g).restHeal * factor)); if (!spawn) h.poisonMs = 0; }
   if (spawn) {
     g.enemies.push(createMonster('tomb_rat', spawn[0], spawn[1]));
     say(g, 'Something scrabbles in the dark. Your rest is cut short!');

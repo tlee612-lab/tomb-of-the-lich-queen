@@ -24,6 +24,7 @@ spells and rules are original. No third-party tabletop rules text is used.
 | Party | Quick-start premade party, a roster of premade heroes, and custom hero creation, all on one hero data format. |
 | Death | Soft. Fallen heroes are revived at a shrine or with a potion. |
 | Saving | Save anywhere, 3 manual slots plus one autosave. |
+| Difficulty | Easy, Normal or Hard (`js/difficulty.js`). Chosen on the new-game screen and changeable at any time from the Esc menu, even after a defeat. It changes how hard monsters hit, how much a rest heals, how often a rest is interrupted, and the starting rations. It is saved with the game. Normal is the game as designed. |
 | Hunger | Light food clock. Food drains slowly, resting costs a ration, the dungeon holds enough. |
 
 ## 3. Movement and view
@@ -52,8 +53,8 @@ Modifier = (attribute − 10) / 2, rounded down.
 ### 4.3 Classes (four, each with a distinct job)
 | Class | Role | Notes |
 |---|---|---|
-| **Warden** | Front-line fighter | Highest HP, heavy armor, best melee. |
-| **Cutpurse** | Skirmisher / utility | Light armor. Backstab bonus on a flanked or newly-engaged enemy, finds hidden switches, opens locks, disarms traps. Not redundant: the only source of lockpicking and trap detection. |
+| **Warden** | Front-line fighter | Highest HP, heavy armor, best melee. Knows **Field Dressing** (one slot, more with levels), so a party without a Votary can still heal. |
+| **Cutpurse** | Skirmisher / utility | Light armor. **Backstab:** +2d6 on a monster that has not yet fought (nobody has hit it, it has not attacked) or that is slowed, added before a crit doubles the blow. Notices hidden switches up to 3 cells ahead (others only from the next cell). Picks locked doors with F without the key (d20 + level + Agility modifier against 12, each try keeps the Cutpurse busy 2.5 s). Spots and disarms pits. The only source of lockpicking and trap detection, and the only one who can open the three **thieves' vaults** (see section 14). |
 | **Votary** | Healer / support | Healing, wards. Fights with a sling from the back row. Sanctify aura damages undead near the party automatically, no cast needed. |
 | **Magister** | Ranged damage | Fragile. Strongest spells. |
 
@@ -98,8 +99,8 @@ Real-time, cooldown-driven.
   front row uses melee weapons (the Staff has reach and the Sling is ranged, so the back row
   is not idle), monsters hunt the party along open corridors and attack the front row first
   (the back row if the front is down, or if the monster is behind you), XP and levelling to 5.
-- Until saving exists (milestone 7), defeat restarts the floor with the party healed.
-  Revival at shrines and potions arrives with milestone 5.
+- If all four fall, the game offers to load the autosave or restart the floor (section 15).
+  Revival at shrines and with potions is in section 6.
 
 ## 6. Magic
 
@@ -116,12 +117,20 @@ Real-time, cooldown-driven.
   hero loses 1 HP every 20 seconds but never drops below 1, so hunger weakens and never kills.
 - **Revival:** a shrine (stand on it, press F) revives the fallen at half HP and mends
   everyone, with limited charges. A draught of return, kept in a quick slot, revives one hero.
-- **Implemented spells (milestone 5):** Mender's Touch, Lantern Ward, Cinder Dart, Frostbind,
-  plus passive Sanctify (a living Votary burns adjacent undead). The rest of the list is for later.
+- **All designed spells are built.** Casters learn them by level (Votary: Unbind at 2, Bulwark at 3;
+  Magister: Arc of Sparks at 2, Mirror Veil at 3, Gale Burst at 4, Dread Sight at 5). Slots still grow
+  only at levels 3 and 5, so from level 2 a caster knows more spells than it can memorize: the menu's
+  **Spells** tab sets what each slot holds, applied at the next rest (default is the known list in order).
+  Bulwark is +3 Defense for 20 s. Mirror Veil absorbs the next blow whole. Arc of Sparks (1d6 + Wits)
+  leaps to one more enemy within two cells. Gale Burst (1d4+1 + Wits) hits up to three enemies in the
+  line, pushes each back a step and staggers it 1.5 s. Dread Sight marks enemies within six cells with
+  a health bar and logs the target's HP, defense and weaknesses. Unbind cures poison and web.
+  Sanctify is passive. Balance numbers were rechecked and did not move (the bot casts only Cinder Dart and healing).
 
 ### Spell list (original, 12 total across two casters)
 | Spell | Class | Effect |
 |---|---|---|
+| *(all built; see section 6 for levels and numbers)* | | |
 | Mender's Touch | Votary | Heal one hero. |
 | Lantern Ward | Votary | Light radius and reveals nearby hidden switches. |
 | Bulwark | Votary | Raises a hero's Defense for a short time. |
@@ -132,6 +141,7 @@ Real-time, cooldown-driven.
 | Mirror Veil | Magister | Absorbs the next hit on a hero. |
 | Arc of Sparks | Magister | Lightning that hits two nearby enemies. |
 | Dread Sight | Magister | Shows enemy HP and weaknesses. |
+| Field Dressing | Warden | Heal one hero for 1d6 + Might. (Added after the balance run; not one of the original 12.) |
 | Sanctify (passive) | Votary | Automatically damages and repels undead near the party. |
 | Revive (shrine/potion) | none | Raises a fallen hero. |
 
@@ -214,13 +224,15 @@ spell button. Click a portrait to open the character sheet.
 
 ## 12. Milestones
 
+All seven milestones are done. After them came a balance simulator (section 16) and a class pass
+(Warden Field Dressing, Cutpurse backstab, lock picking and thieves' vaults, then a difficulty retune; see `docs/BALANCE.md`).
+
 1. **Engine scaffold:** grid movement, perspective renderer, test map, party panel. DONE
-   (milestones 1-5 are done: engine, puzzles, party and hero creation, combat, magic and food.)
-2. Doors, keys, switches, plates, teleporters, spinners.
-3. Party data, hero creation, roster.
-4. Combat, cooldowns, monsters.
-5. Spells and resting, food.
-6. Floor 1 content, then floors 2 and 3, then the finale.
+2. Doors, keys, switches, plates, teleporters, spinners. DONE
+3. Party data, hero creation, roster. DONE
+4. Combat, cooldowns, monsters. DONE
+5. Spells and resting, food. DONE
+6. Floor 1 content, then floors 2 and 3, then the finale. DONE (section 14)
 7. Save and load, journal, audio, polish. DONE (see section 15).
 
 ## 13. Research status
@@ -244,13 +256,29 @@ Four floors, defined in `js/data/floors.js` from rectangles of floor plus specia
 | 1 | The Barrow Halls | Doors, a bronze key, a plate that opens a gate, a hidden switch to a cache, a shrine. Tomb Rats and Bone Wretches. |
 | 2 | The Drowned Ossuary | Teleporters (a sealed pocket holds a gem), spinners, a gem-socket door that needs a ruby and a sapphire, a hidden bonus cache, poison from Mire Oozes, the first Gravebound Guard. |
 | 3 | The Cinder Court | Dark (needs the Lantern Ward), hidden pit traps (a Cutpurse spots and disarms them; a Votary's Lantern Ward reveals them; otherwise you fall and are hurt, never killed), Sepulchral Spiders that web from range, Cinder Wraiths that strike the back row, an ember key, a plate-gated stairway. |
-| 4 | The Queen's Chamber | Veshara. She cannot be harmed while any of three phylactery lamps burns, so snuff each lamp (stand in front and press F). While any lamp burns she sits her throne and shoots bolts from range; once all three are dark she rises, hunts within her chamber, and calls up three Bone Wretches at 66% and 33% health. Killing her ends the game. |
+| 4 | The Queen's Chamber | Veshara. She cannot be harmed while any of three phylactery lamps burns, so snuff each lamp (stand in front and press F). While any lamp burns she sits her throne and shoots bolts from range; once all three are dark she rises, hunts within her chamber, and calls up three Bone Wretches at 66% and 33% health. Killing her opens an iron gate in an alcove below the throne, where Princess Elowen is held: walk in and free her (F) to win. She is the reward for the fight, not a party member and not an escort. An inscription on the east wall hints at her. |
 
-Each of floors 1 to 3 has one optional hidden cache with bonus XP. Stairs are paired, and each
+Each of floors 1 to 3 has one optional hidden cache with bonus XP, and one **thieves' vault** behind a lock that no key fits (lock id `picklock`, DC 14). Only a living Cutpurse can open it; the vault holds a stash of XP (15, 20, 25) and a potion (healing, return, healing). Each vault has an inscription that hints at it. `tests/campaign.mjs` proves the whole dungeon, boss included, is finishable without a Cutpurse and that exactly the six vault items are lost. Stairs are paired, and each
 floor remembers its own surviving monsters. Defeat restarts the current floor.
 
-Not built from the original design: Mire Oozes do not split when burned, and there is no
-one-way door yet.
+Mire Oozes split when burned (Cinder Dart): what is left of the ooze's health is shared with a new ooze on a free cell beside it,
+only for an ooze with at least 4 HP left and never more than 8 oozes on a floor. The new ooze is worth no XP, so burning cannot be farmed.
+Blades, Frostbind and Sanctify do not split it.
+
+**One-way doors** (tile `W`, direction in the floor's `oneway` table) have a handle on one side only. Bump or press F
+while travelling the right way and the door opens and stays open; from the wrong side it will not budge. They are shortcuts
+back, never a way forward, so no puzzle depends on them: floor 1 has one from the shrine room west into the key room, floor 2
+one from the pool hall north to the shrine hall. The campaign test checks both sides are open floor and the solver ignores them.
+**The prison wing (floor 2) and the NPC slot.** South of the pool-hall, behind a lock that wants the jailer's key (lying in the sealed
+teleporter pocket with the sapphire), is a guardroom held by two Gravebound Guards and a Bone Wretch. The two cell keys are in there.
+A corridor beyond leads to two cells, each holding a prisoner: **Tavin** (Cutpurse) and **Ysolde** (Warden). Open a cell, stand in the
+doorway and press F (or walk into them) to free them. The party has a **fifth slot for one NPC**: the first prisoner freed joins at the
+party's average level, at half health, and fights, casts and levels like anyone else (key 5 attacks with them). The other prisoner stays
+behind, so it is a real choice. A freed NPC does not take XP from the four: kills divide XP by the number of non-NPC heroes. The party is
+defeated only when all five are down. Saves hold four or five heroes, and each cell remembers whether its prisoner was freed. The wing is
+optional (nothing in the main route needs it), so the balance simulator, which plays four heroes on the main route, is unchanged.
+
+Nothing from the original design is left unbuilt.
 
 `tests/campaign.mjs` solves the whole dungeon from a fresh start (keys, gems, plates, switches,
 teleporters, stairs) and fails if any item, monster, shrine, staircase, lamp or the Queen is
@@ -266,7 +294,7 @@ boss. A scripted run through the real browser UI also completed the game.
   browser with storage blocked falls back to saves that last until the tab closes. The autosave runs
   every 30 seconds, on every floor change and after resting. Defeat offers to load it, or to restart
   the floor. Starting a new game does not touch the old autosave for its first 30 seconds.
-- **Journal (J):** inscriptions on the walls (ten across the four floors) are recorded the first time
+- **Journal (J):** inscriptions on the walls (thirteen across the four floors) are recorded the first time
   they are seen, grouped by floor, and saved with the game. They carry the real clues: the bronze key,
   the hidden switch, the two gems, the pits, and the Queen's lamps.
 - **Sound (M toggles, remembered):** synthesized with the Web Audio API, no asset files: steps, hits,

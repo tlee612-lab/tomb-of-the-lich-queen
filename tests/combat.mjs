@@ -112,4 +112,26 @@ at(g, 1, 1, 1); g.paused = true; g.party[0].cd = 500;
 tick(g, 10000);
 assert.equal(g.party[0].cd, 500); assert.deepEqual([g.enemies[0].x, g.enemies[0].y], [3, 1]);
 
+// --- Cutpurse backstab: extra 2d6 on a fresh or slowed foe, never on one already fighting ---------------------------
+g = setup([{ type: 'bone_wretch', x: 1, y: 3 }, { type: 'bone_wretch', x: 1, y: 4 }], script(ROLL15, 0.5, 0.5, 0.5));
+at(g, 1, 2, 2);
+const wretch = enemyAhead(g);
+assert.equal(wretch.engaged, false);
+r = heroAttack(g, 1);                                  // Sela: d4=3, +3 agility, backstab 4+4 = 8 -> 14
+assert.deepEqual([r.ok, r.hit, r.dmg], [true, true, 14]); assert.match(g.msgs.at(-1), /backstabs/);
+assert.equal(wretch.engaged, true);
+g.party[1].cd = 0; g.rng = script(ROLL15, 0.5, 0.5, 0.5);
+r = heroAttack(g, 1); assert.equal(r.dmg, 6, 'no backstab on a foe already fighting');   // 3 + 3, and it dies
+g.party[1].cd = 0; wretch.hp = 18; wretch.slowMs = 6000; g.enemies = [wretch]; g.rng = script(ROLL15, 0.5, 0.5, 0.5);
+r = heroAttack(g, 1); assert.equal(r.dmg, 14, 'a slowed foe can be backstabbed again');
+// a Warden never backstabs, and a monster that has attacked is no longer fresh
+g = setup([{ type: 'bone_wretch', x: 1, y: 3 }], script(ROLL15, 0.5));
+at(g, 1, 2, 2);
+r = heroAttack(g, 0); assert.equal(r.dmg, 8); assert.match(g.msgs.at(-1), /hits/);
+g = setup([{ type: 'bone_wretch', x: 1, y: 3 }], () => 0.5);
+at(g, 1, 2, 2); g.enemies[0].atkCd = 0; tick(g, 10);
+assert.equal(g.enemies[0].engaged, true, 'attacking engages a monster');
+g.rng = script(ROLL15, 0.5, 0.5, 0.5);
+assert.equal(heroAttack(g, 1).dmg, 6);
+
 console.log('combat ok');

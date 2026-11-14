@@ -9,7 +9,7 @@ const RULES = [
   [/^The .* (hits|webs|blasts) /, 'hurt'],
   [/^The .* (misses|shoots wide)/, 'miss'],
   [/ crits /, 'crit'],
-  [/Sanctify burns|Cinder Dart|slows the|casts |glances off|fizzles/, 'spell'],
+  [/Sanctify burns|Cinder Dart|slows the|casts |glances off|fizzles|splits in two/, 'spell'],
   [/ hits the | burns the /, 'hit'],
   [/ misses the /, 'miss'],
   [/ heals |drinks a healing|pours a draught|rises!|shrine blazes/, 'heal'],

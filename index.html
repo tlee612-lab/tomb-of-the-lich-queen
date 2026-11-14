@@ -10,6 +10,7 @@
 <section id="setup" hidden>
   <h1>Tomb of the Lich Queen</h1>
   <div id="continue" hidden><h2>Continue</h2><div id="continueList"></div><div id="continueErr" role="alert"></div><p class="note">A new game starts saving over the autosave after 30 seconds. Use a numbered slot (Esc, then Save) to keep a run.</p></div>
+  <p class="note">The Lich Queen Veshara has taken a princess and keeps her in the deepest chamber of her tomb. Descend four floors, destroy the Queen, and bring the princess out.</p>
   <h2>New game</h2>
   <p>Choose your party of four. The first two stand in the front row, the last two in the back.</p>
   <div id="slots"></div>
@@ -25,8 +26,13 @@
       <div id="cErr" role="alert"></div>
     </form>
   </details>
+  <div id="diffRow"><label>Difficulty <select id="difficulty"></select></label>
+    <p id="difficultyNote" class="note"></p></div>
   <div id="setupErr" role="alert"></div>
   <button id="startBtn" type="button">Enter the tomb</button>
+  <div id="picker" hidden><div id="pickerBox" role="dialog" aria-label="Choose a portrait">
+    <div id="pickerTabs"></div><div id="pickerGrid"></div><button id="pickerClose" type="button">Close</button>
+  </div></div>
 </section>
 <main id="game" hidden>
   <div id="viewframe"><canvas id="view" width="448" height="300"></canvas>
@@ -54,7 +60,7 @@
 </main>
 <div id="modal" hidden role="dialog" aria-modal="true" aria-label="Game menu">
   <div id="modalBox">
-    <div id="tabs"><button type="button" data-tab="menu">Menu</button><button type="button" data-tab="journal">Journal</button><button type="button" data-tab="help">Help</button><button type="button" id="closeModal">Close (Esc)</button></div>
+    <div id="tabs"><button type="button" data-tab="menu">Menu</button><button type="button" data-tab="spells">Spells</button><button type="button" data-tab="journal">Journal</button><button type="button" data-tab="help">Help</button><button type="button" id="closeModal">Close (Esc)</button></div>
     <div id="tabBody"></div>
   </div>
 </div>

@@ -6,9 +6,11 @@ import { runSetup, portraitHTML } from './setup.js';
 import { heroAttack, canAct, enemyAhead, retry, alive } from './combat.js';
 import { castSpell, useQuick, rest, advance, memorizedCount } from './magic.js';
 import { SPELLS } from './data/spells.js';
+import { slotsFor, loadoutFor } from './spellbook.js';
 import { saveGame, loadGame, listSaves, describeSave } from './save.js';
 import { createAudio } from './audio.js';
 import { startAnim, animView, classifyMove } from './anim.js';
+import { DIFFICULTIES, DIFFICULTY_IDS, setDifficulty, diff } from './difficulty.js';
 
 // ---- storage: localStorage if the browser allows it, otherwise memory for this visit only ---------------------
 function pickStorage() {
@@ -157,7 +159,18 @@ function renderModal() {
     }).join('');
     body.innerHTML = `<h3>Save and load</h3>${rows}
       <p class="note">${durable ? 'Saves are kept in this browser. The game also saves itself every 30 seconds, when you change floors, and after resting.' : 'This browser blocks storage, so saves last only until you close this tab.'}</p>
-      <h3>Sound</h3><button type="button" data-sound>Sound is ${audio.isMuted() ? 'off. Turn on' : 'on. Turn off'}</button>`;
+      <h3>Sound</h3><button type="button" data-sound>Sound is ${audio.isMuted() ? 'off. Turn on' : 'on. Turn off'}</button>
+      <h3>Difficulty</h3><div class="diffrow">${DIFFICULTY_IDS.map(id => `<button type="button" data-diff="${id}"${diff(game) === DIFFICULTIES[id] ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"'}>${DIFFICULTIES[id].name}</button>`).join(' ')}</div>
+      <p class="note">${esc(diff(game).text)} You can change this at any time, including after a defeat.</p>`;
+  } else if (modalTab === 'spells') {
+    const casters = game.party.map((h, i) => ({ h, i })).filter(({ h }) => slotsFor(h) > 0);
+    body.innerHTML = '<h3>Memorize spells</h3><p class="note">Choose what each slot holds. Your choices take effect the next time the party rests.</p>' +
+      casters.map(({ h, i }) => {
+        const plan = loadoutFor(h);
+        return `<div class="saverow"><div class="what"><b>${esc(h.name)}</b><small>${h.class} L${h.level}</small></div>` +
+          plan.map((cur, s) => `<select data-plan="${i}:${s}" aria-label="${esc(h.name)} slot ${s + 1}">${h.spellsKnown.map(n => `<option value="${esc(n)}"${n === cur ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>`).join('') + '</div>' +
+          `<p class="note">${h.spellsKnown.map(n => `<b>${esc(n)}</b>: ${esc(SPELLS[n].text)}`).join('<br>')}</p>`;
+      }).join('');
   } else if (modalTab === 'journal') {
     if (!game.journal.length) body.innerHTML = '<p>Nothing recorded yet. Inscriptions you read are saved here automatically, so a clue is never lost.</p>';
     else {
@@ -174,14 +187,14 @@ function renderModal() {
       <tr><td><kbd>A</kbd> <kbd>D</kbd></td><td>Sidestep left and right</td></tr>
       <tr><td><kbd>Q</kbd> <kbd>E</kbd></td><td>Turn left and right</td></tr>
       <tr><td><kbd>F</kbd> / <kbd>Space</kbd> / click the view</td><td>Use what is in front: doors, switches, lamps, shrines (stand on one), pits. Click a monster to attack it.</td></tr>
-      <tr><td><kbd>1</kbd>-<kbd>4</kbd></td><td>Attack with that hero (front row for melee; staffs and slings reach from the back)</td></tr>
+      <tr><td><kbd>1</kbd>-<kbd>5</kbd></td><td>Attack with that hero (front row for melee; staffs and slings reach from the back)</td></tr>
       <tr><td>Spell buttons</td><td>Enemy spells fire at the monster ahead. Ally spells ask you to click a hero. <kbd>Esc</kbd> cancels.</td></tr>
       <tr><td><kbd>R</kbd></td><td>Rest (costs a ration, not with enemies near)</td></tr>
       <tr><td><kbd>P</kbd></td><td>Pause</td></tr>
       <tr><td><kbd>J</kbd></td><td>Journal</td></tr>
       <tr><td><kbd>M</kbd></td><td>Sound on or off</td></tr>
       <tr><td><kbd>Esc</kbd></td><td>This menu</td></tr></table>
-      <h3>Hints</h3><p class="note">Inscriptions on the walls are recorded in the journal. A Cutpurse spots pits ahead and can disarm them with F. Lantern Ward lights dark floors and reveals hidden things. Shrines raise the fallen but have only two charges.</p>`;
+      <h3>Hints</h3><p class="note">Inscriptions on the walls are recorded in the journal. A Cutpurse spots pits ahead and can disarm them with F, notices hidden switches up to three cells away, picks locked doors with F (it may take a few tries, and is the only way into a thieves' vault, a lock no key fits), and backstabs monsters that have not yet fought or are slowed. A Warden's Field Dressing mends an ally. Fire splits a Mire Ooze in two, so fight oozes with blades. Prisoners in the tomb can be freed with F once their cell is open; one of them can join as a fifth party member. A heavy iron-banded door with no handle opens only from its other side, and then stays open: a shortcut back. Lantern Ward lights dark floors and reveals hidden things. Shrines raise the fallen but have only two charges.</p>`;
   }
 }
 $('modal').addEventListener('click', e => {
@@ -189,11 +202,20 @@ $('modal').addEventListener('click', e => {
   if (t.dataset.tab) { modalTab = t.dataset.tab; armedSlot = null; renderModal(); }
   else if (t.id === 'closeModal') closeModal();
   else if (t.dataset.sound !== undefined) toggleSound();
+  else if (t.dataset.diff) {
+    if (setDifficulty(game, t.dataset.diff)) { game.msgs.push(`Difficulty is now ${DIFFICULTIES[t.dataset.diff].name}.`); flushMessages(); renderModal(); }
+  }
   else if (t.dataset.load) { const r = loadSlot(t.dataset.load === 'auto' ? 'auto' : +t.dataset.load); if (!r.ok) { game.msgs.push(r.why); flushMessages(); } }
   else if (t.dataset.save) {
     const slot = +t.dataset.save;
     if (describeSave(slot, storage) && armedSlot !== slot) { armedSlot = slot; renderModal(); } else saveSlot(slot);
   }
+});
+$('modal').addEventListener('change', e => {
+  const sel = e.target.closest('select[data-plan]'); if (!sel) return;
+  const [i, s] = sel.dataset.plan.split(':').map(Number), h = game.party[i];
+  h.plan = loadoutFor(h); h.plan[s] = sel.value;
+  game.msgs.push(`${h.name} will memorize ${sel.value} in slot ${s + 1} at the next rest.`); flushMessages();
 });
 $('menuBtn').addEventListener('click', () => openModal('menu'));
 $('journalBtn').addEventListener('click', () => openModal('journal'));
@@ -208,7 +230,7 @@ addEventListener('keydown', e => {
   if (modalOpen) return;
   if (k === 'p') { e.preventDefault(); togglePause(); return; }
   if (k === 'r') { e.preventDefault(); doRest(); return; }
-  if (/^[1-4]$/.test(k)) { e.preventDefault(); attack(+k - 1); return; }
+  if (/^[1-5]$/.test(k)) { e.preventDefault(); attack(+k - 1); return; }
   if (e.target.tagName === 'BUTTON' && (k === ' ' || k === 'Enter')) return;   // let focused buttons click
   const a = KEYS[k];
   if (a) { e.preventDefault(); act(a); }
@@ -254,6 +276,7 @@ function buildParty() {
 }
 
 function updateParty() {
+  if (cards.length !== game.party.length) buildParty();                  // a prisoner joined the fifth slot
   game.party.forEach((h, i) => {
     const c = cards[i], btn = c.querySelector('.atk'), can = canAct(game, i);
     c.classList.toggle('fallen', !alive(h));
@@ -283,7 +306,7 @@ function updateParty() {
 function updateOverlay() {
   const show = (game.paused && !modalOpen) || game.defeated || game.won;
   $('overlay').hidden = !show;
-  $('overlayText').textContent = game.won ? 'VICTORY!\nThe Lich Queen is destroyed.' : game.defeated ? 'THE PARTY HAS FALLEN' : 'PAUSED (P to resume)';
+  $('overlayText').textContent = game.won ? 'VICTORY!\nThe Lich Queen is destroyed and the princess is free.' : game.defeated ? 'THE PARTY HAS FALLEN' : 'PAUSED (P to resume)';
   $('retryBtn').hidden = !(game.defeated || game.won);
   $('retryBtn').textContent = game.won ? 'Play again' : 'Restart floor';
   $('loadBtn').hidden = !(game.defeated && autoExists);
@@ -306,12 +329,16 @@ function loop(t) {
 }
 function ensureLoop() { if (!looping) { looping = true; last = performance.now(); requestAnimationFrame(loop); } }
 
-function begin(party) {
+const MISSION = 'The Lich Queen Veshara has taken a princess, Elowen, and keeps her alive in the deepest chamber of this tomb. Descend four floors. Solve what bars the way, rest when you must, and watch your food. In the Queen\'s chamber you will find three phylactery lamps; while any burns she cannot be harmed, so snuff them all, destroy her, and free the princess. Prisoners elsewhere in the tomb may be worth freeing too.';
+function begin(party, difficulty = 'normal') {
   game.party = party;
+  setDifficulty(game, difficulty, { fresh: true });
   started = true;
   $('game').hidden = false;
   buildParty();
+  game.journal.push({ floor: 0, title: 'Your Mission', text: MISSION });
   look(game);
+  game.msgs.push('The Lich Queen Veshara has taken a princess and keeps her in the deepest chamber of this tomb. Go down, destroy the Queen, and bring her out. (Your mission is in the journal: J)');
   game.msgs.push('You enter the Barrow Halls. W/S move, A/D sidestep, Q/E turn, F use. Click a monster or press 1-4 to attack, R rests, Esc opens the menu.');
   flushMessages();
   ensureLoop();                                     // no instant autosave: it would overwrite a previous run

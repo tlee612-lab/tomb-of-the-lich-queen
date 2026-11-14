@@ -177,6 +177,98 @@ Average hero level on arriving at each floor:
 - Treat every number here as a way to compare changes against each other. The only real test is people playing it, and the cheapest next step is to put the
   game in front of a few and watch where they die.
 
+## After the class changes (2026-11-14)
+
+Changes: the Warden learned **Field Dressing** (heal 1d6 + Might, one slot, more with levels). The Cutpurse got a real kit: **backstab** (+2d6 on a monster that has not fought yet, or is slowed), hidden switches noticed from 3 cells, **lock picking**, plus the pit work it already had. The bot now heals with Field Dressing too, and opens each fight with the Cutpurse (a player would, since any earlier blow uses up the fresh-foe bonus). 200 runs per cell, slow pace:
+
+| variant | before | after |
+|---|---|---|
+| careful | 99% | 99% |
+| rush | 71% | 87% |
+| average | 39% | 60% |
+| careless | 0% | 0% |
+| no-healer (second Warden instead of the Votary) | 48% | 63% |
+| no-cutpurse (second Warden instead of the Cutpurse) | 100% | 100% |
+| no-mage (second Warden instead of the Magister) | 100% | 100% |
+
+What it shows:
+- **Healing is no longer mandatory.** Without the Votary the win rate rose from 48% to 63%. The Votary is still the best healer (two slots, two spells, Sanctify), which is intended.
+- **The game got easier in the middle.** Rush and average rose by 16 and 21 points because every party now has some healing and a backstab. Careful was already at the ceiling. The tuning targets in this report (rush about 71%, average about 39%) no longer hold. Decide whether to re-tighten monsters or accept the easier middle.
+- **The Cutpurse is still replaceable in the simulator.** A second Warden still wins every run, with fewer hero falls. The bot cannot show the Cutpurse's non-combat value: it already knows where every switch is and carries every key, so lock picking and long-range switch sight are invisible to it. The backstab alone does not outweigh a second Warden's HP, armor and heal. This is not solved, only improved. The fix has to be a design decision: give the Cutpurse something a Warden cannot do and the dungeon asks for (for example a locked or trapped route that only picking opens, or a bonus cache reachable only that way), or weaken what the second Warden brings.
+- **Update: thieves' vaults added.** One per floor on floors 1 to 3, behind a lock no key fits, so only a Cutpurse opens them (XP 30/40/50 and a potion each). The bot picks them when it has a Cutpurse. Same 200 runs, slow pace:
+
+| variant | before vaults | with vaults |
+|---|---|---|
+| careful (Cutpurse) | 99% | 100%, 178 damage taken, final level 5.0 |
+| no-cutpurse (second Warden) | 100% | 100%, 223 damage taken, final level 4.1 |
+| no-healer (Cutpurse, two Wardens, no Votary) | 63% | 94% |
+| rush / average (no caches or vaults) | 87% / 60% | 87% / 60% |
+
+  The Cutpurse now clearly matters: the party that has one takes about 20% less damage and finishes a level higher, and a party with no Votary goes from 63% to 94% with a Cutpurse's loot. But the win rate cannot show it, because the best parties already win about 100%. The game is now too easy at the top, so the "Cutpurse is replaceable" finding is hidden behind a ceiling, not fixed by one. A careful run now rests about once (it was 3.4 times at human pace), so the guard rail in `tests/balance.mjs` was lowered from 1.5 to 1. That was fixed by the retune below, and the guard rail is back at 1.5.
+- Not measured: how lock picking feels (each try is a 2.5 s d20 roll; a natural 1 always fails), and whether a human notices the backstab message.
+
+## Retune after the class changes (2026-11-14)
+
+The tables above ("Where it ended up") describe the game before the class changes; this section is current.
+
+What changed, and why:
+
+| change | why |
+|---|---|
+| Ooze 16 to 20 HP, +1 damage, +1 to hit, faster; guard 30 to 36 HP, +1 damage, +1 to hit; spider 12 to 14 HP, +1; wraith 20 to 24 HP, +1, faster | Field Dressing, backstab and the vaults had made floors 2 and 3 too soft (a careful run rested about once) |
+| Monster XP up about 30% (rat 5, wretch 21, ooze 16, guard 39, spider 26, wraith 42) | players who skip the optional loot were a full level behind at the Queen; more XP on the main path narrows that |
+| Cache XP halved (20/25/30) and vault XP set to 15/20/25 | the optional loot decided too much of the game |
+| Queen 130 to 120 HP, everything else unchanged | the harder floors already take their toll; a 150 HP Queen made rush 28% and average 11% |
+
+Result, 200 runs per row, slow pace (human pace in brackets where it differs a lot):
+
+| variant | win rate | deaths on floor 1/2/3/4 | hero falls | rests | damage taken | final level |
+|---|---|---|---|---|---|---|
+| careful | 99% | 0 / 0 / 1 / 1 | 1.0 | 2.1 | 232 | 5.0 |
+| rush | 74% (85%) | 0 / 0 / 12 / 40 | 2.1 | 3.1 | 260 | 3.9 |
+| average | 23% | 0 / 1 / 33 / 121 | 3.9 | 1.1 | 239 | 3.9 |
+| careless | 0% | 0 / 65 / 135 / 0 | 4.2 | 0.0 | 114 | - |
+| no-healer (Cutpurse, two Wardens, Mage) | 70% (78%) | 0 / 0 / 0 / 60 | 2.9 | 2.4 | 319 | 4.9 |
+| no-cutpurse (two Wardens, Votary, Mage) | 100% | 0 / 0 / 0 / 0 | 0.4 | 3.1 | 269 | 4.0 |
+| no-mage (Cutpurse, Votary, two Wardens) | 97% | 0 / 0 / 1 / 5 | 1.4 | 1.9 | 277 | 4.9 |
+
+Against the targets:
+- Careful wins nearly always but not every time (99%), skipping the loot is survivable but risky (74%), resting late is mostly a loss (23%, below the old 39% aim), ignoring spells, potions and rest never works (0%). The careful run rests about twice at slow and human pace, so the guard rail in `tests/balance.mjs` is back at 1.5.
+- **Healing matters but is not mandatory:** a party with no Votary wins 70% (it was 48% before Field Dressing, 100% for a party that also has a Votary).
+- **The Cutpurse shows up in survivability, not win rate.** The party with a Cutpurse takes less damage (232 against 269, careful against no-cutpurse) and ends a level higher (5.0 against 4.0), because it collects the vaults. Both still win almost every time, so the Cutpurse remains replaceable by a strong party of Wardens, a Votary and a Mage. The vaults make her worth bringing, not worth requiring.
+- **The Mage is still replaceable** (97% with a Warden instead).
+- **Average is on the harsh side.** The bot that rests only when badly hurt loses three runs in four, mostly to the Queen after arriving at about 8% health.
+- **Lamp phase softened (same day):** the Queen's bolt went from 1d8+1 to 1d6+1, cutting the damage taken while her lamps burn from about 44 to about 39. Over 200 slow-pace runs this lifted rush from 74% to 82% and average from 23% to 25%, and left careful at 99%, no-healer at 73% and no-cutpurse at 100%. It barely helps average because that bot's trouble starts earlier: 33 of its 150 losses are on floor 3 and it reaches the Queen with almost no health left (lowest average health 9%), so the cure is resting before the stairs, not a gentler Queen. Not changed further.
+
+## Difficulty setting
+
+The levels (`js/difficulty.js`):
+
+| level | monster damage | rest heals | rest interrupted | starting rations |
+|---|---|---|---|---|
+| Easy | x0.6 | 75% of max HP | 10% | 4 |
+| Normal | x1 | 50% | 25% | 3 |
+| Hard | x1.3 | 40% | 35% | 3 |
+
+Monster damage is rounded and never below 1. Normal is exactly the rules that the tables above measure. Same bots, 200 runs each, slow pace:
+
+| player | Easy | Normal | Hard |
+|---|---|---|---|
+| careful | not run | 99% | 79% |
+| rush (skips the loot) | 100% | 82% | 29% |
+| average (rests late) | 93% | 25% | not run |
+| careless (no spells, potions or rest) | 6% | 0% | not run |
+
+What it says:
+- **Easy does its job.** A player who rests late and skips the loot goes from losing three runs in four to winning 93%, and a rush player never loses. Even ignoring every tool mostly still fails (6%), so Easy is easy and not a walkover for a player who does nothing.
+- **Easy may be generous.** Rush at 100% means a player who takes the main path and heals is barely tested. If that is too soft, move monster damage from 0.6 to about 0.7.
+- **Hard bites.** A careful player drops to 79% (the Queen kills 40 of 200), and a player who skips the loot wins 29%.
+- Not measured: whether a human can tell the levels apart in the first minutes, and the Hard numbers for the average and careless bots.
+
+## Splitting oozes
+
+Cinder Dart now splits a Mire Ooze (see `docs/DESIGN.md` section 14). The bot never burns oozes (a player who has seen one split would not), so the simulator's numbers did not move: careful 100%, rush 82%, average 24% over 200 slow-pace runs. The cost of burning an ooze, more bodies in the corridor and no extra XP, is therefore not measured. Reading the rules, a Magister who burns oozes pays for it and gains nothing.
+
 ## Re-tuning
 
 Edit the numbers in `js/data/monsters.js`, `js/data/floors.js` (monster counts, items), `js/combat.js` (`XP_LEVELS`) or `js/magic.js` (hunger, resting), then:
@@ -186,3 +278,16 @@ node tools/balance.mjs 100 --pace=slow          # all variants
 node tools/balance.mjs 100 --variant=careful --pace=human
 npm test                                         # includes guard-rail checks on the difficulty
 ```
+
+## The prison guardroom (tools/prison.mjs)
+
+The optional prison wing on floor 2 is guarded by three Gravebound Guards, a Bone Wretch and a Cinder Wraith (XP about 45 each for a
+party that clears it). `node tools/prison.mjs [runs] --levels=2,3 [--difficulty=hard]` plays that one fight with the real rules.
+The party holds the doorway, heals under 55%, slows guards with Frostbind, and uses no potions. A second case (`charge`, used from
+the scratch script, not the CLI) steps inside and fights surrounded.
+
+Findings: single file through the door, every hero can hit the one monster ahead, so even four guards are easy. The first garrison
+(two guards and a wretch) cost the party 10% of its HP. The chosen garrison costs about 20% at levels 2 and 3 holding the doorway,
+about 30% charging in, and loses a hero in roughly 1 run in 20 at level 2 on Normal (1 in 5 on Hard). Win rate is about 100% at every
+setting. That fits optional content: worth doing carefully, never a wall. A fourth guard made the bot stall (nothing came through the
+door), so it was left out. If the wing should be harder, add a ranged monster that shoots down the corridor rather than more melee.

@@ -32,7 +32,18 @@ body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.3 "Courier 
 .slot .stats { font-size:12px; opacity:.85; }
 .portrait { width:48px; height:48px; float:right; margin-left:6px; border:1px solid var(--edge); image-rendering:pixelated;
   display:grid; place-items:center; font-size:22px; background:#000; }
-.portrait img { width:100%; height:100%; image-rendering:pixelated; }
+.portrait img { width:100%; height:100%; image-rendering:auto; object-fit:cover; }
+.slot .portrait { width:88px; height:88px; cursor:pointer; }
+.slot .portrait:hover { border-color:var(--ink); }
+#picker { position:fixed; inset:0; background:rgba(0,0,0,.8); display:grid; place-items:center; z-index:20; padding:12px; }
+#picker[hidden] { display:none; }
+#pickerBox { background:var(--panel); border:2px solid var(--edge); padding:10px; width:min(760px,100%); max-height:calc(100vh - 24px); display:flex; flex-direction:column; gap:8px; }
+#pickerTabs { display:flex; flex-wrap:wrap; gap:6px; }
+#pickerTabs button.on { border-color:var(--ink); }
+#pickerGrid { overflow:auto; min-height:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:6px; }
+#pickerGrid button { padding:0; border:2px solid var(--edge); background:#000; line-height:0; }
+#pickerGrid button.cur { border-color:var(--ink); }
+#pickerGrid img { width:100%; aspect-ratio:1; object-fit:cover; }
 #creator { background:var(--panel); border:2px solid var(--edge); padding:8px; margin-bottom:12px; }
 #creator label { display:block; margin-bottom:4px; }
 #cAttrs .attr { display:flex; align-items:center; gap:6px; margin:2px 0; }
@@ -95,3 +106,6 @@ body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.3 "Courier 
 #tabBody table { border-collapse:collapse; font-size:13px; }
 #tabBody td { padding:2px 12px 2px 0; vertical-align:top; }
 #tabBody kbd { background:var(--panel); border:1px solid var(--edge); padding:0 5px; }
+#tabBody .diffrow button.on { background:var(--edge); font-weight:bold; }
+#diffRow { margin:10px 0; }
+#diffRow select { width:auto; min-width:140px; }

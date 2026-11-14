@@ -2,6 +2,7 @@
 // tested from Node. A save holds only what changes during play; the rest is rebuilt from the floor data.
 import { loadCampaign } from './data/floors.js';
 import { newGame } from './world.js';
+import { DIFFICULTIES, DEFAULT_DIFFICULTY } from './difficulty.js';
 
 export const SAVE_VERSION = 1;
 export const SLOTS = [1, 2, 3];
@@ -12,12 +13,12 @@ export function serialize(g) {
   g.map.enemies = g.enemies;                               // the current floor's live monsters
   return {
     v: SAVE_VERSION, savedAt: Date.now(),
-    floor: g.floor, x: g.x, y: g.y, dir: g.dir, bag: [...g.bag], rations: g.rations,
+    floor: g.floor, x: g.x, y: g.y, dir: g.dir, bag: [...g.bag], rations: g.rations, difficulty: g.difficulty,
     hungerMs: g.hungerMs, starving: g.starving, starveMs: g.starveMs, lightMs: g.lightMs, sanctMs: g.sanctMs,
     journal: clone(g.journal), party: clone(g.party),
     floors: g.floors.map(f => clone({
       grid: f.grid.map(r => r.join('')), items: f.items, plates: f.plates, switches: f.switches, shrines: f.shrines,
-      traps: f.traps, lamps: f.lamps, inscriptions: f.inscriptions, placed: f.placed || {}, enemies: f.enemies,
+      traps: f.traps, lamps: f.lamps, inscriptions: f.inscriptions, placed: f.placed || {}, enemies: f.enemies, npcs: f.npcs,
     })),
   };
 }
@@ -27,7 +28,7 @@ function valid(d, floorCount) {
   return d && d.v === SAVE_VERSION && Array.isArray(d.floors) && d.floors.length === floorCount
     && Number.isInteger(d.floor) && d.floor >= 0 && d.floor < floorCount
     && isNum(d.x) && isNum(d.y) && [0, 1, 2, 3].includes(d.dir) && Array.isArray(d.bag) && isNum(d.rations)
-    && Array.isArray(d.party) && d.party.length === 4 && Array.isArray(d.journal)
+    && Array.isArray(d.party) && (d.party.length === 4 || d.party.length === 5) && Array.isArray(d.journal)
     && d.party.every(h => h && typeof h.name === 'string' && isNum(h.hp) && isNum(h.hpMax) && Array.isArray(h.quickSlots))
     && d.floors.every(f => f && Array.isArray(f.grid) && Array.isArray(f.enemies) && Array.isArray(f.items));
 }
@@ -43,11 +44,11 @@ export function restore(data, rng = Math.random) {
     if (s.grid.length !== f.h || s.grid.some(r => r.length !== f.w)) throw new Error('size mismatch');
     f.grid = s.grid.map(r => r.split(''));
     Object.assign(f, { items: s.items, plates: s.plates, switches: s.switches, shrines: s.shrines, traps: s.traps,
-      lamps: s.lamps, inscriptions: s.inscriptions, placed: s.placed, enemies: s.enemies });
+      lamps: s.lamps, inscriptions: s.inscriptions, placed: s.placed, enemies: s.enemies, npcs: s.npcs || f.npcs });
   });
   Object.assign(g, { floor: d.floor, map: floors[d.floor], x: d.x, y: d.y, dir: d.dir, bag: d.bag, rations: d.rations,
     hungerMs: d.hungerMs || 0, starving: !!d.starving, starveMs: d.starveMs || 0, lightMs: d.lightMs || 0, sanctMs: d.sanctMs || 0,
-    journal: d.journal, party: d.party });
+    journal: d.journal, party: d.party, difficulty: DIFFICULTIES[d.difficulty] ? d.difficulty : DEFAULT_DIFFICULTY });
   g.enemies = g.map.enemies;
   return g;
 }

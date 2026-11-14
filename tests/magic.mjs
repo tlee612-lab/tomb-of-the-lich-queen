@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { loadMap } from '../js/map.js';
 import { newGame, step, interact } from '../js/world.js';
 import { quickStartParty, formParty } from '../js/party.js';
-import { gainXp, alive, XP_LEVELS } from '../js/combat.js';
+import { gainXp, alive, XP_LEVELS, kill, splitOoze } from '../js/combat.js';
 import { castSpell, useQuick, rest, advance, memorizedCount, HUNGER_MS } from '../js/magic.js';
 import { slotsFor } from '../js/spellbook.js';
 import { MONSTERS } from '../js/data/monsters.js';
@@ -20,7 +20,8 @@ const H = { brannoch: 0, sela: 1, ioreth: 2, quillon: 3 };
 // --- slots ------------------------------------------------------------------------------------------
 let g = setup();
 assert.deepEqual(g.party[H.quillon].spellsMemorized, ['Cinder Dart', 'Frostbind']);
-assert.deepEqual(g.party[H.brannoch].spellsMemorized, []);
+assert.deepEqual(g.party[H.brannoch].spellsMemorized, ['Field Dressing']);
+assert.deepEqual(g.party[H.sela].spellsMemorized, []);
 gainXp(g, g.party[H.quillon], XP_LEVELS[2]);              // level 3: a third slot arrives
 assert.equal(g.party[H.quillon].level, 3); assert.equal(slotsFor(g.party[H.quillon]), 3);
 assert.equal(g.party[H.quillon].spellsMemorized.length, 3);
@@ -41,6 +42,31 @@ advance(g, 2000);
 assert.match(castSpell(g, H.quillon, 'Cinder Dart').why, /no Cinder Dart memorized/);
 assert.match(castSpell(g, H.brannoch, 'Cinder Dart').why, /does not know/);
 
+// --- Mire Oozes split when burned, and only when burned --------------------------------------------------------------------
+g = setup([{ type: 'mire_ooze', x: 1, y: 3 }]);
+at(g, 1, 2, 2);
+const ooze = g.enemies[0];
+r = castSpell(g, H.quillon, 'Cinder Dart');                // d6=4, +2, +3 wits = 9 off 20 HP
+assert.equal(r.ok, true);
+assert.equal(g.enemies.filter(e => e.hp > 0).length, 2, 'the burned ooze split in two');
+const kid = g.enemies.find(e => e !== ooze);
+assert.equal(ooze.hp + kid.hp, 11, 'the 11 HP left is shared'); assert.deepEqual([ooze.hp, kid.hp], [6, 5]);
+assert.deepEqual([kid.x, kid.y], [2, 3], 'it appears on a free cell beside the first'); assert.equal(kid.spawn, true);
+assert.ok(g.msgs.some(m => /splits in two/.test(m)));
+kid.hp = 1; kill(g, kid);                                  // a split-off ooze is worth no XP
+assert.ok(g.party.every(h => h.xp === 0), 'no XP for a split-off ooze');
+assert.equal(MONSTERS.mire_ooze.xp > 0, true);
+// not when slowed, hit by a blade, nearly dead, or when the floor is already full of oozes
+g = setup([{ type: 'mire_ooze', x: 1, y: 3 }]); at(g, 1, 2, 2);
+castSpell(g, H.quillon, 'Frostbind'); assert.equal(g.enemies.length, 1, 'Frostbind does not split it');
+g = setup([{ type: 'mire_ooze', x: 1, y: 3 }]); at(g, 1, 2, 2); g.enemies[0].hp = 3;
+assert.equal(splitOoze(g, g.enemies[0]), null, 'too little left to split');
+g = setup(Array.from({ length: 8 }, (_, i) => ({ type: 'mire_ooze', x: 1 + (i % 3), y: 1 + Math.floor(i / 3) }))); at(g, 5, 6, 2);
+g.enemies.forEach(e => { e.hp = 10; });
+assert.equal(splitOoze(g, g.enemies[0]), null, 'at most 8 oozes at once');
+g = setup([{ type: 'bone_wretch', x: 1, y: 3 }]); at(g, 1, 2, 2);
+castSpell(g, H.quillon, 'Cinder Dart'); assert.equal(g.enemies.length, 1, 'only oozes split');
+
 // --- Frostbind slows an enemy ----------------------------------------------------------------------------
 g = setup([{ type: 'tomb_rat', x: 1, y: 3 }, { type: 'tomb_rat', x: 3, y: 3 }]);
 at(g, 1, 1, 1);                                          // facing east, nothing adjacent ahead
@@ -60,6 +86,18 @@ assert.equal(r.ok, true); assert.equal(g.party[H.brannoch].hp, 18);
 g.party[H.sela].hp = 0; g.party[H.ioreth].cd = 0; g.party[H.ioreth].spellsMemorized = ["Mender's Touch"];
 assert.match(castSpell(g, H.ioreth, "Mender's Touch", H.sela).why, /living ally/);
 assert.equal(memorizedCount(g.party[H.ioreth], "Mender's Touch"), 1, 'no slot spent on a fallen ally');
+
+// --- Field Dressing: a Warden heals without a Votary ------------------------------------------------------------
+g = setup();
+g.party[H.sela].hp = 5;
+r = castSpell(g, H.brannoch, 'Field Dressing', H.sela);    // d6=4, +3 might -> 7
+assert.equal(r.ok, true); assert.equal(g.party[H.sela].hp, 12);
+assert.equal(memorizedCount(g.party[H.brannoch], 'Field Dressing'), 0, 'the slot is spent');
+advance(g, 2000);
+assert.match(castSpell(g, H.brannoch, 'Field Dressing', H.sela).why, /no Field Dressing memorized/);
+rest(g);                                                    // resting restores it
+assert.equal(memorizedCount(g.party[H.brannoch], 'Field Dressing'), 1);
+assert.match(castSpell(g, H.sela, 'Field Dressing', H.sela).why, /does not know/, 'only a Warden knows it');
 
 // --- Lantern Ward reveals hidden switches nearby ----------------------------------------------------------------
 g = setup(); at(g, 3, 6, 3);

@@ -4,6 +4,9 @@ import { loadCampaign } from '../js/data/floors.js';
 import { DX, DY, tileAt } from '../js/map.js';
 import { MONSTERS } from '../js/data/monsters.js';
 import { SPELLS } from '../js/data/spells.js';
+import { VAULT_LOCK } from '../js/world.js';
+import { createHero } from '../js/party.js';
+import { CLASSES } from '../js/data/classes.js';
 
 const floors = loadCampaign();
 const key = (x, y) => `${x},${y}`;
@@ -32,8 +35,23 @@ floors.forEach((f, fi) => {
   for (const t of f.teleports) { assert.equal(tileAt(f, t.x, t.y), 'T'); assert.ok(walkable(t.to.x, t.to.y)); }
   for (const [k, id] of Object.entries(f.locks)) {
     const [x, y] = k.split(',').map(Number); assert.equal(tileAt(f, x, y), 'L');
+    if (id === VAULT_LOCK) {                                      // no key exists: only a Cutpurse opens it, and it guards a vault
+      assert.ok(f.items.some(i => i.vault), `${here}: the lock at ${k} guards a vault`);
+      continue;
+    }
     assert.ok(floors.slice(0, fi + 1).some(g => g.items.some(i => i.id === id)), `${here}: key ${id} exists on this or an earlier floor`);
   }
+  for (const n of f.npcs) {
+    assert.ok(walkable(n.x, n.y), `${here}: prisoner ${n.name} stands on floor`);
+    assert.ok(n.thanks && n.portrait && CLASSES[n.class], `${here}: prisoner ${n.name} is fully described`);
+    assert.doesNotThrow(() => createHero({ id: n.id, name: n.name, class: n.class, attrs: n.attrs }), `${n.name} is a valid hero`);
+    assert.ok(!f.monsters.some(m => m.x === n.x && m.y === n.y), `${here}: no monster stands on a prisoner`);
+  }
+  for (const [k, dir] of Object.entries(f.oneway)) {
+    const [x, y] = k.split(',').map(Number); assert.equal(tileAt(f, x, y), 'W', `${here}: one-way door sits on a W tile`);
+    assert.ok(walkable(x - DX[dir], y - DY[dir]) && walkable(x + DX[dir], y + DY[dir]), `${here}: both sides of the one-way door at ${k} are open floor`);
+  }
+  for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) if (tileAt(f, x, y) === 'W') assert.ok(f.oneway[key(x, y)] !== undefined, `${here}: W at ${x},${y} has a direction`);
   for (const [k, ids] of Object.entries(f.sockets)) {
     const [x, y] = k.split(',').map(Number); assert.equal(tileAt(f, x, y), 'M');
     ids.forEach(id => assert.ok(f.items.some(i => i.id === id), `${here}: gem ${id} exists`));
@@ -58,7 +76,7 @@ floors.forEach((f, fi) => {
 });
 
 // ---- the solver ----------------------------------------------------------------------------------------------
-function solve() {
+function solve(thief = true) {                           // thief: the party has a Cutpurse, who can pick vault locks
   const fresh = loadCampaign();
   const keys = new Set(), gems = new Set();
   const opened = fresh.map(() => new Set());           // gates opened, per floor
@@ -75,7 +93,7 @@ function solve() {
       const passable = (x, y) => {
         const t = tileAt(f, x, y);
         if (WALK.has(t)) return true;
-        if (t === 'L') return keys.has(f.locks[key(x, y)]);
+        if (t === 'L') return f.locks[key(x, y)] === VAULT_LOCK ? thief : keys.has(f.locks[key(x, y)]);
         if (t === 'M') return f.sockets[key(x, y)].every(id => gems.has(id));
         if (t === 'G') return opened[fi].has(key(x, y));
         return false;
@@ -94,6 +112,7 @@ function solve() {
         if (i.kind === 'key' && !keys.has(i.id)) { keys.add(i.id); changed = true; }
         if (i.kind === 'gem' && !gems.has(i.id)) { gems.add(i.id); changed = true; }
       }
+      if (f.rescue && f.monsters.some(m => m.type === 'veshara' && R.has(key(m.x, m.y))) && !opened[fi].has(key(...f.rescue))) { opened[fi].add(key(...f.rescue)); changed = true; }   // the Queen's fall opens the princess's gate
       for (const p of f.plates) if (R.has(key(p.x, p.y))) for (const [x, y] of p.targets) if (!opened[fi].has(key(x, y))) { opened[fi].add(key(x, y)); changed = true; }
       for (const s of f.switches) if (R.has(key(s.x + DX[s.face], s.y + DY[s.face]))) for (const [x, y] of s.targets) if (!opened[fi].has(key(x, y))) { opened[fi].add(key(x, y)); changed = true; }
       for (const st of f.stairs) if (R.has(key(st.x, st.y))) {
@@ -119,9 +138,22 @@ fresh.forEach((f, fi) => {
   for (const i of f.inscriptions) assert.ok(R.has(key(i.x + DX[i.face], i.y + DY[i.face])), `${here}: inscription "${i.title}" can be read`);
   for (const p of f.plates) assert.ok(R.has(key(p.x, p.y)), `${here}: plate reachable`);
   for (const k of Object.keys(f.locks)) { const [x, y] = k.split(',').map(Number); assert.ok(R.has(key(x, y)), `${here}: locked door ${k} can be opened`); }
+  for (const n of f.npcs) assert.ok(R.has(key(n.x, n.y)), `${here}: prisoner ${n.name} can be reached and freed`);
 });
 const boss = floors[3].monsters.find(m => m.type === 'veshara');
 assert.ok(reach[3].has(key(boss.x, boss.y)), 'the Lich Queen can be reached');
+
+// ---- without a Cutpurse: the dungeon is still finishable, and only the thieves' vaults are lost -------------------------------
+const noThief = solve(false);
+noThief.fresh.forEach((f, fi) => {
+  const here = `floor ${fi + 1} (${f.name}) without a Cutpurse`, R = noThief.reach[fi];
+  assert.ok(noThief.entered[fi], `${here}: still reachable`);
+  for (const i of f.items) assert.equal(R.has(key(i.x, i.y)), !i.vault, `${here}: ${i.name} at ${i.x},${i.y} ${i.vault ? 'is locked away' : 'is obtainable'}`);
+  for (const m of f.monsters) assert.ok(R.has(key(m.x, m.y)), `${here}: ${m.type} can be fought`);
+  for (const s of f.stairs) assert.ok(R.has(key(s.x, s.y)), `${here}: stairs reachable`);
+});
+assert.ok(noThief.reach[3].has(key(boss.x, boss.y)), 'the Queen can be reached without a Cutpurse');
+assert.equal(floors.flatMap(f => f.items).filter(i => i.vault).length, 6, 'three vaults, two things in each');
 
 // ---- campaign shape ---------------------------------------------------------------------------------------------------
 assert.equal(floors.length, 4);

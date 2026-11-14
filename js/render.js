@@ -59,6 +59,11 @@ function frontWall(ctx, lx, z, ch, sw) {
     ctx.fillStyle = ch === 'L' ? shade([200, 170, 60], z) : shade([170, 150, 120], z);
     ctx.beginPath(); ctx.arc(hx, hy, r, 0, 7); ctx.fill();
     if (ch === 'L') ctx.fillRect(hx - r, hy + r, r * 2, r * 2.4);  // lock plate
+  } else if (ch === 'W') {                           // one-way door: iron-banded planks, no handle
+    for (let i = 1; i < 5; i++) { const x = x0 + (w * i) / 5 + 0.5; line(x, y0, x, y0 + h); }
+    ctx.strokeRect(x0 + 2.5, y0 + 2.5, w - 5, h - 5);
+    ctx.fillStyle = shade([90, 96, 110], z);
+    ctx.fillRect(x0, y0 + h * 0.2, w, Math.max(3, h / 14)); ctx.fillRect(x0, y0 + h * 0.7, w, Math.max(3, h / 14));
   } else if (ch === 'M') {                           // slab with two gem sockets
     ctx.strokeRect(x0 + 3.5, y0 + 3.5, w - 7, h - 7);
     for (const fx of [0.34, 0.66]) {
@@ -241,12 +246,31 @@ function drawMonster(ctx, e, zc, t, spriteSrc) {
   return 1.15 * u;
 }
 
+// A shackled prisoner: tattered robe with the hero's painted portrait for a face.
+function drawNpc(ctx, map, cx, cy, z0, z1) {
+  const n = map.npcs?.find(n => !n.freed && n.x === cx && n.y === cy);
+  if (!n) return;
+  const zc = (z0 + z1) / 2, [sx, fy] = proj(0, HALF_H, zc), u = FOCAL / zc;
+  ctx.fillStyle = shade([84, 74, 64], zc);
+  ctx.beginPath(); ctx.moveTo(sx - 0.3 * u, fy); ctx.lineTo(sx - 0.17 * u, fy - 0.75 * u); ctx.lineTo(sx + 0.17 * u, fy - 0.75 * u); ctx.lineTo(sx + 0.3 * u, fy); ctx.fill();
+  ctx.fillStyle = shade([40, 40, 46], zc);                                  // manacles
+  ctx.fillRect(sx - 0.2 * u, fy - 0.45 * u, 0.1 * u, 0.05 * u); ctx.fillRect(sx + 0.1 * u, fy - 0.45 * u, 0.1 * u, 0.05 * u);
+  const img = spriteImage(n.portrait);
+  if (img) ctx.drawImage(img, sx - 0.28 * u, fy - 1.32 * u, 0.56 * u, 0.56 * u);
+  else circle(ctx, sx, fy - 1.0 * u, 0.2 * u, shade([180, 150, 120], zc));
+}
+
 function drawEnemies(ctx, p, cx, cy, z0, z1, t) {
   const zc = (z0 + z1) / 2, u = FOCAL / zc;
   let top = 0;
   for (const e of p.enemies) {
     if (e.hp <= 0 || e.x !== cx || e.y !== cy) continue;
     top = Math.max(top, drawMonster(ctx, { ...e, kind: MONSTERS[e.type].kind }, zc, t, MONSTERS[e.type].sprite));
+    if (e.seen) {                                              // Dread Sight: a health bar over the monster
+      const [bx, by] = proj(0, HALF_H, zc), bw = 0.5 * u, by2 = by - top - 0.1 * u;
+      ctx.fillStyle = '#300'; ctx.fillRect(bx - bw / 2, by2, bw, Math.max(3, 0.05 * u));
+      ctx.fillStyle = '#d33'; ctx.fillRect(bx - bw / 2, by2, bw * Math.max(0, e.hp) / e.hpMax, Math.max(3, 0.05 * u));
+    }
   }
   for (const f of p.fx) {
     if (f.cell.x !== cx || f.cell.y !== cy) continue;
@@ -302,6 +326,7 @@ export function render(ctx, map, p, t = 0, view = {}) {
     if (solid(k, -1)) sideWall(ctx, -0.5, z0, z1, tile(k, -1));
     if (solid(k, 1)) sideWall(ctx, 0.5, z0, z1, tile(k, 1));
     if (solid(k + 1, 0)) frontWall(ctx, 0, z1, tile(k + 1, 0), switchOn(k + 1, 0));
+    if (k >= 1) drawNpc(ctx, map, cx, cy, rz0, z1);
     if (k >= 1 && p.enemies) drawEnemies(ctx, p, cx, cy, rz0, z1, t);
   }
   if (view.fade > 0 && view.snapshot) {                          // turns, sidesteps, teleports and stairs: dissolve from the last frame

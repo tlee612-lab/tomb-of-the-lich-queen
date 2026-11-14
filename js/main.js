@@ -160,6 +160,7 @@ function renderModal() {
     body.innerHTML = `<h3>Save and load</h3>${rows}
       <p class="note">${durable ? 'Saves are kept in this browser. The game also saves itself every 30 seconds, when you change floors, and after resting.' : 'This browser blocks storage, so saves last only until you close this tab.'}</p>
       <h3>Sound</h3><button type="button" data-sound>Sound is ${audio.isMuted() ? 'off. Turn on' : 'on. Turn off'}</button>
+      ${document.fullscreenEnabled ? `<h3>Screen</h3><button type="button" data-full>${document.fullscreenElement ? 'Leave full screen' : 'Full screen (hides the browser bar)'}</button>` : ''}
       <h3>Difficulty</h3><div class="diffrow">${DIFFICULTY_IDS.map(id => `<button type="button" data-diff="${id}"${diff(game) === DIFFICULTIES[id] ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"'}>${DIFFICULTIES[id].name}</button>`).join(' ')}</div>
       <p class="note">${esc(diff(game).text)} You can change this at any time, including after a defeat.</p>`;
   } else if (modalTab === 'spells') {
@@ -201,6 +202,10 @@ $('modal').addEventListener('click', e => {
   const t = e.target.closest('button'); if (!t) return;
   if (t.dataset.tab) { modalTab = t.dataset.tab; armedSlot = null; renderModal(); }
   else if (t.id === 'closeModal') closeModal();
+  else if (t.dataset.full !== undefined) {
+    const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    Promise.resolve(p).catch(() => {}).finally(() => renderModal());
+  }
   else if (t.dataset.sound !== undefined) toggleSound();
   else if (t.dataset.diff) {
     if (setDifficulty(game, t.dataset.diff)) { game.msgs.push(`Difficulty is now ${DIFFICULTIES[t.dataset.diff].name}.`); flushMessages(); renderModal(); }

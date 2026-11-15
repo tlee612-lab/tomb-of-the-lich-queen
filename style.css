@@ -168,28 +168,27 @@ button { touch-action:manipulation; }             /* no double-tap zoom on the b
   .hero .atk kbd, .hero .spell .sc { float:none; flex:none; }
 }
 
-/* On-screen controls over the view (phones). Faint glass buttons so the dungeon still shows through; the pad below the view goes away. */
+/* On-screen controls over the view (phones). First stage: forward and back only, as bare bright arrows with no button behind them.
+   The turn, step and attack controls stay where they were. */
 #touch { display:none; }
+#mapHide { position:absolute; bottom:6px; right:calc(22% + 12px); z-index:2; width:26px; height:26px; padding:0; font-size:14px; line-height:1; background:rgba(18,13,9,.35); color:var(--ink); border:1px solid rgba(230,215,176,.5); cursor:pointer; }
+#viewframe.nomap #minimap { display:none; }
+#minimap { top:auto; bottom:6px; right:6px; }
+#viewframe.nomap #mapHide { right:6px; }
+#log { overflow-y:auto; }
 @media (max-width:700px), (orientation:landscape) and (max-height:520px) {
-  #pad { display:none; }
   #touch { display:block; position:absolute; inset:0; pointer-events:none; }
-  #touch button, #touch .tbtn { pointer-events:auto; touch-action:manipulation; -webkit-tap-highlight-color:transparent; user-select:none; }
-  #tl { position:absolute; left:6px; bottom:6px; display:grid; grid-template-columns:repeat(3,46px); grid-template-rows:46px 46px; gap:4px;
-        grid-template-areas:". f ." "l b r"; }
-  #tl [data-act=fwd] { grid-area:f; } #tl [data-act=strL] { grid-area:l; } #tl [data-act=back] { grid-area:b; } #tl [data-act=strR] { grid-area:r; }
-  #tr { position:absolute; right:6px; bottom:6px; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
-  #tturn { display:flex; gap:4px; }
-  #tatk { display:grid; grid-template-columns:repeat(2,44px); gap:4px; }
-  #touch button { background:rgba(18,13,9,.28); color:rgba(230,215,176,.62); border:2px solid rgba(230,215,176,.32); border-radius:50%; font:inherit; font-size:20px; padding:0; }
-  #tl button, #tturn button { width:46px; height:46px; }
-  #touch button:active { background:rgba(230,215,176,.45); }
-  #touch .tbtn { position:relative; overflow:hidden; width:44px; height:44px; }
-  #touch .tbtn img, #touch .tbtn b { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.5; }
-  #touch .tbtn b { display:grid; place-items:center; }
-  #touch .tbtn .tfill { position:absolute; left:0; right:0; bottom:0; height:0; background:rgba(0,0,0,.6); z-index:1; }
-  #touch .tbtn.ready { border-color:rgba(201,162,74,.9); } #touch .tbtn.ready img { opacity:.85; }
-  #touch .tbtn.fallen { opacity:.3; }
-  #touchHide { position:absolute; left:6px; top:6px; width:30px; height:30px; font-size:14px; }
-  #touch.off #tl, #touch.off #tr { display:none; }
-  #minimap { width:19%; }                                  /* keeps clear of the turn buttons below it */
+  #touch button { pointer-events:auto; touch-action:manipulation; -webkit-tap-highlight-color:transparent; user-select:none; background:none; border:0; padding:0; font:inherit; }
+  #tl { position:absolute; inset:0; pointer-events:none; }                        /* the four arrows sit on the edges of the view */
+  #tl button { position:absolute; width:48px; height:44px; font-size:30px; line-height:44px; color:transparent; opacity:1; -webkit-text-stroke:1.6px rgba(235,225,195,.75);
+    text-shadow:none; }
+  #tl button:active { -webkit-text-stroke-color:#ffd866; }
+  #tl [data-act=fwd] { top:4px; left:50%; margin-left:-24px; } #tl [data-act=back] { bottom:4px; left:50%; margin-left:-24px; }
+  #tl [data-act=strL] { left:2px; top:50%; margin-top:-22px; } #tl [data-act=strR] { right:2px; top:50%; margin-top:-22px; }
+  #pad { display:none; }                                                          /* every direction is on the view now */
+  #touchHide { position:absolute; left:6px; bottom:6px; width:30px; height:30px; font-size:16px; color:#fff; opacity:.8; text-shadow:0 0 3px #000, 0 0 3px #000; }
+  #touch.off #tl { display:none; }
+  #minimap { width:19%; } #mapHide { right:calc(19% + 12px); } #viewframe.nomap #mapHide { right:6px; }
+  #tl [data-act=turnL] { top:4px; left:4px; } #tl [data-act=turnR] { top:4px; right:4px; }
+  #log { height:4.2em; }
 }

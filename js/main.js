@@ -41,7 +41,7 @@ function flushMessages() {
     logLines.unshift(m); audio.playForMessage(m);
     if (/party rests|shrine blazes/.test(m)) wantAutosave = true;
   }
-  logLines.length = Math.min(logLines.length, 7);
+  logLines.length = Math.min(logLines.length, 60);               // the log scrolls, so it keeps a good stretch of history
   $('log').textContent = logLines.join('\n');
 }
 
@@ -279,8 +279,12 @@ addEventListener('keydown', e => {
 });
 document.querySelectorAll('#pad button').forEach(b => b.addEventListener('click', () => act(b.dataset.act)));
 // The on-screen controls over the view (phones): they act the instant a finger lands, and a hide switch clears them away.
-document.querySelectorAll('#tl button, #tturn button').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); act(b.dataset.act); }));
+document.querySelectorAll('#tl button').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); act(b.dataset.act); }));
 $('touchHide').addEventListener('click', () => $('touch').classList.toggle('off'));
+// The minimap can be tucked away; the choice is remembered.
+const setMapHidden = hide => { $('viewframe').classList.toggle('nomap', hide); try { localStorage.setItem('totlq.nomap', hide ? '1' : ''); } catch { /* not remembered */ } };
+try { if (localStorage.getItem('totlq.nomap')) $('viewframe').classList.add('nomap'); } catch { /* storage unavailable */ }
+$('mapHide').addEventListener('click', () => setMapHidden(!$('viewframe').classList.contains('nomap')));
 canvas.addEventListener('click', () => {
   if (locked()) return;
   if (enemyAhead(game)) {                                    // click a monster: the first ready hero strikes
@@ -305,8 +309,6 @@ function buildParty() {
       <div class="quick"><button type="button" class="qs" data-q="0"></button><button type="button" class="qs" data-q="1"></button></div>
       <span class="dmg"></span>
     </div>`).join('') + '<div class="hero" style="grid-column:1/-1"><div class="cl bag"></div></div>';
-  $('tatk').innerHTML = game.party.map((h, i) => `<button type="button" class="tbtn" data-i="${i}" aria-label="${esc(h.name)} attacks"><i class="tfill"></i>${h.portrait ? `<img src="${h.portrait}" alt="">` : `<b>${esc(h.name[0].toUpperCase())}</b>`}</button>`).join('');
-  $('tatk').querySelectorAll('.tbtn').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); attack(+b.dataset.i); }));
   cards = [...document.querySelectorAll('.hero[data-i]')];
   cards.forEach(c => {
     const i = +c.dataset.i;
@@ -343,11 +345,6 @@ function updateParty() {
       b.textContent = it ? it.name : '-'; b.disabled = !alive(h) || !it;
     });
     c.querySelector('.cdfill').style.width = h.cdMax && h.cd > 0 ? `${(100 * h.cd) / h.cdMax}%` : '0';
-    const tb = $('tatk').children[i];
-    if (tb) {                                                            // the same cooldown, on the on-screen attack button
-      tb.firstChild.style.height = h.cdMax && h.cd > 0 ? `${(100 * h.cd) / h.cdMax}%` : '0';
-      tb.classList.toggle('ready', can.ok && !!enemyAhead(game)); tb.classList.toggle('fallen', !alive(h));
-    }
     btn.disabled = !alive(h) || (!can.ok && /cannot reach/.test(can.why));
     btn.classList.toggle('ready', can.ok && !!enemyAhead(game));
   });

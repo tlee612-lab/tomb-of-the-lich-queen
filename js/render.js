@@ -44,12 +44,35 @@ const WIN_X = [0, 340, 680], WIN_W = 340;
 const winFor = (cx, cy, face) => WIN_X[Math.abs(cx * 7 + cy * 13 + face * 5) % 3];
 const shadeAlpha = z => 1 - Math.max(0.12, 1 - z / reach);
 
+// Painted doors, used as drawn. Which picture stands for which kind of door is decided here.
+const DOOR_PIC = {
+  D: 'assets/doors/metal.png',     // an ordinary door
+  L: 'assets/doors/face.png',      // a locked door
+  W: 'assets/doors/slab.png',      // the one-way door: a plain slab with no handle
+  G: 'assets/doors/grille.png',    // a gate
+  M: 'assets/doors/eye.png',       // the gem-socket door
+};
+// A door picture fills the wall face. A narrow one (the slab) is kept at its own proportions, centred on brick or dark stone.
+function drawDoorPicture(ctx, img, x0, y0, w, h, z, cell) {
+  const ar = img.naturalWidth / img.naturalHeight;
+  let dx = x0, dw = w;
+  if (Math.abs(ar / (w / h) - 1) > 0.2) {
+    dw = Math.round(h * ar); dx = x0 + Math.round((w - dw) / 2);
+    if (wallTex && cell) ctx.drawImage(wallTex, winFor(cell[0], cell[1], 0), 0, WIN_W, wallTex.naturalHeight, x0, y0, w, h);
+    else { ctx.fillStyle = '#2a2018'; ctx.fillRect(x0, y0, w, h); }
+  }
+  ctx.drawImage(img, dx, y0, dw, h);
+  ctx.fillStyle = '#000'; ctx.globalAlpha = shadeAlpha(z); ctx.fillRect(x0, y0, w, h); ctx.globalAlpha = 1;
+}
+
 // Wall face toward the viewer, centred at lateral offset lx, at distance z.
 function frontWall(ctx, lx, z, ch, sw, cell) {
   const pal = PALETTE[ch] || PALETTE['#'];
   const a = proj(lx - 0.5, -HALF_H, z), b = proj(lx + 0.5, HALF_H, z);
   const x0 = Math.round(a[0]), y0 = Math.round(a[1]);
   const w = Math.round(b[0] - a[0]) + 1, h = Math.round(b[1] - a[1]) + 1;
+  const dimg = DOOR_PIC[ch] && spriteImage(DOOR_PIC[ch]);
+  if (dimg) { drawDoorPicture(ctx, dimg, x0, y0, w, h, z, cell); return; }
   if (ch === '#' && wallTex && cell) {                                      // a painted brick wall
     ctx.drawImage(wallTex, winFor(cell[0], cell[1], 0), 0, WIN_W, wallTex.naturalHeight, x0, y0, w, h);
     ctx.fillStyle = '#000'; ctx.globalAlpha = shadeAlpha(z); ctx.fillRect(x0, y0, w, h); ctx.globalAlpha = 1;
@@ -126,9 +149,12 @@ function drawWallFeature(ctx, sw, x0, y0, w, h, z) {
 function sideWall(ctx, x, z0, z1, ch, cell) {
   const pal = PALETTE[ch] || PALETTE['#'];
   const zm = (z0 + z1) / 2;
-  if (ch === '#' && wallTex && cell) {                                      // painted brick, mapped with perspective column by column
+  const doorImg = DOOR_PIC[ch] ? spriteImage(DOOR_PIC[ch]) : null;
+  const img = ch === '#' ? wallTex : doorImg;
+  if (img && cell) {                                                        // painted brick or door, mapped with perspective column by column
     const xa = Math.round(CX + (x * FOCAL) / z0), xb = Math.round(CX + (x * FOCAL) / z1);
-    const lo = Math.min(xa, xb), hi = Math.max(xa, xb), sx = winFor(cell[0], cell[1], 1), th = wallTex.naturalHeight;
+    const lo = Math.min(xa, xb), hi = Math.max(xa, xb), th = img.naturalHeight;
+    const sx = ch === '#' ? winFor(cell[0], cell[1], 1) : 0, WINW = ch === '#' ? WIN_W : img.naturalWidth;
     const i0 = 1 / z0, i1 = 1 / z1;
     ctx.fillStyle = '#000';
     for (let px = lo; px <= hi; px++) {
@@ -136,7 +162,7 @@ function sideWall(ctx, x, z0, z1, ch, cell) {
       if (!(z >= Math.min(z0, z1) - 1e-6 && z <= Math.max(z0, z1) + 1e-6)) continue;
       const u = (1 / z - i0) / (i1 - i0);                                 // perspective-correct position along the wall, 0 near .. 1 far
       const top = CY - (HALF_H * FOCAL) / z, hgt = (2 * HALF_H * FOCAL) / z;
-      ctx.drawImage(wallTex, sx + Math.min(WIN_W - 1, Math.max(0, u * WIN_W)), 0, 1, th, px, top, 1, hgt);
+      ctx.drawImage(img, sx + Math.min(WINW - 1, Math.max(0, u * WINW)), 0, 1, th, px, top, 1, hgt);
       ctx.globalAlpha = shadeAlpha(z); ctx.fillRect(px, top, 1, hgt); ctx.globalAlpha = 1;
     }
     return;

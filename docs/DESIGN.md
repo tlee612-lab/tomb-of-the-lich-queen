@@ -324,3 +324,11 @@ layout beyond the on-screen movement pad.
 ## 16. Balance
 
 Difficulty was tuned with a simulator that plays the real game thousands of times. See `docs/BALANCE.md` for the method, what it found, what changed, and what is still open (the Cutpurse and the mage are replaceable, the healer is not, and nobody has played it yet).
+
+## Art in the game (walls, doors, decorations)
+
+Floor 1 draws its walls from the painted red brick (`wall` on the floor in `js/data/floors.js`); the other floors still use drawn brick until they get pictures.
+Doors are painted pieces: metal door (ordinary), carved face (locked), stone slab (one-way), grille (gate), eye plaque (gem-socket door).
+Wall **decorations** (`decor`: wall cell, the direction it faces, and a kind) are painted pieces on one wall face: a recessed square **hole** and a barred brick
+**grate**. Floor 1 has ten, floor 2 has four grates. They are used as painted, darkened by distance, and drawn in perspective on side walls.
+Every picture is plain image data under `assets/`; `tests/campaign.mjs` checks each decoration sits on a wall that open floor can see and not under a plaque, switch or lamp.

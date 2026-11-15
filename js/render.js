@@ -44,6 +44,34 @@ const WIN_X = [0, 340, 680], WIN_W = 340;
 const winFor = (cx, cy, face) => WIN_X[Math.abs(cx * 7 + cy * 13 + face * 5) % 3];
 const shadeAlpha = z => 1 - Math.max(0.12, 1 - z / reach);
 
+// ---- wall decorations: a painted piece placed on one wall face (`decor` in js/data/floors.js: { x, y, face, kind }) --------------------
+const DECOR_PIC = { hole: 'assets/decor/hole.png', grate: 'assets/decor/grate.png' };
+// wf: width as a fraction of the wall face; vc: centre height, or vb: bottom edge, as fractions of the face height (0 top .. 1 floor)
+const DECOR = { hole: { wf: 0.44, vc: 0.42 }, grate: { wf: 0.62, vb: 0.97 } };
+const decorShaded = {};
+// The piece darkened for distance, cached in a few steps so a wall far away is not as bright as one beside you.
+function decorImg(kind, z) {
+  const img = spriteImage(DECOR_PIC[kind]);
+  if (!img || typeof document === 'undefined') return null;
+  const lvl = Math.round(shadeAlpha(z) * 10), key = kind + lvl;
+  if (!decorShaded[key]) {
+    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const cx = c.getContext('2d'); cx.drawImage(img, 0, 0);
+    cx.globalCompositeOperation = 'source-atop'; cx.globalAlpha = lvl / 10; cx.fillStyle = '#000'; cx.fillRect(0, 0, c.width, c.height);
+    decorShaded[key] = c;
+  }
+  return decorShaded[key];
+}
+function decorBox(kind, im) {
+  const d = DECOR[kind], hf = (d.wf * (im.height / im.width)) / (2 * HALF_H), v0 = d.vb !== undefined ? d.vb - hf : d.vc - hf / 2;
+  return { u0: 0.5 - d.wf / 2, u1: 0.5 + d.wf / 2, v0, v1: v0 + hf };
+}
+function drawDecorFront(ctx, deco, x0, y0, w, h, z) {
+  const im = decorImg(deco.kind, z); if (!im) return;
+  const b = decorBox(deco.kind, im);
+  ctx.drawImage(im, x0 + b.u0 * w, y0 + b.v0 * h, (b.u1 - b.u0) * w, (b.v1 - b.v0) * h);
+}
+
 // Painted doors, used as drawn. Which picture stands for which kind of door is decided here.
 const DOOR_PIC = {
   D: 'assets/doors/metal.png',     // an ordinary door
@@ -66,7 +94,7 @@ function drawDoorPicture(ctx, img, x0, y0, w, h, z, cell) {
 }
 
 // Wall face toward the viewer, centred at lateral offset lx, at distance z.
-function frontWall(ctx, lx, z, ch, sw, cell) {
+function frontWall(ctx, lx, z, ch, sw, cell, deco) {
   const pal = PALETTE[ch] || PALETTE['#'];
   const a = proj(lx - 0.5, -HALF_H, z), b = proj(lx + 0.5, HALF_H, z);
   const x0 = Math.round(a[0]), y0 = Math.round(a[1]);
@@ -76,6 +104,7 @@ function frontWall(ctx, lx, z, ch, sw, cell) {
   if (ch === '#' && wallTex && cell) {                                      // a painted brick wall
     ctx.drawImage(wallTex, winFor(cell[0], cell[1], 0), 0, WIN_W, wallTex.naturalHeight, x0, y0, w, h);
     ctx.fillStyle = '#000'; ctx.globalAlpha = shadeAlpha(z); ctx.fillRect(x0, y0, w, h); ctx.globalAlpha = 1;
+    if (deco) drawDecorFront(ctx, deco, x0, y0, w, h, z);
     if (sw) drawWallFeature(ctx, sw, x0, y0, w, h, z);
     return;
   }
@@ -146,7 +175,7 @@ function drawWallFeature(ctx, sw, x0, y0, w, h, z) {
 }
 
 // Side wall at lateral x (negative = left), spanning distance z0..z1.
-function sideWall(ctx, x, z0, z1, ch, cell) {
+function sideWall(ctx, x, z0, z1, ch, cell, deco) {
   const pal = PALETTE[ch] || PALETTE['#'];
   const zm = (z0 + z1) / 2;
   const doorImg = DOOR_PIC[ch] ? spriteImage(DOOR_PIC[ch]) : null;
@@ -164,6 +193,16 @@ function sideWall(ctx, x, z0, z1, ch, cell) {
       const top = CY - (HALF_H * FOCAL) / z, hgt = (2 * HALF_H * FOCAL) / z;
       ctx.drawImage(img, sx + Math.min(WINW - 1, Math.max(0, u * WINW)), 0, 1, th, px, top, 1, hgt);
       ctx.globalAlpha = shadeAlpha(z); ctx.fillRect(px, top, 1, hgt); ctx.globalAlpha = 1;
+      if (deco && ch === '#') {                                           // a decoration seen edge-on, mapped with the same perspective
+        const im = decorImg(deco.kind, z);
+        if (im) {
+          const b = decorBox(deco.kind, im);
+          if (u >= b.u0 && u <= b.u1) {
+            const du = Math.min(im.width - 1, Math.max(0, ((u - b.u0) / (b.u1 - b.u0)) * im.width));
+            ctx.drawImage(im, du, 0, 1, im.height, px, top + b.v0 * hgt, 1, (b.v1 - b.v0) * hgt);
+          }
+        }
+      }
     }
     return;
   }
@@ -356,6 +395,7 @@ export function render(ctx, map, p, t = 0, view = {}) {
   const rx = -fy, ry = fx;
   const cell = (f, r) => [p.x + fx * f + rx * r, p.y + fy * f + ry * r];
   const tile = (f, r) => tileAt(map, ...cell(f, r));
+  const decorAt = (x, y, face) => (map.decor || []).find(d => d.x === x && d.y === y && d.face === face) || null;   // the decoration on the face of this wall that you can see
   const solid = (f, r) => SOLID.has(tile(f, r));
   const switchOn = (f, r) => {
     const [cx, cy] = cell(f, r), face = (p.dir + 2) % 4;
@@ -372,7 +412,7 @@ export function render(ctx, map, p, t = 0, view = {}) {
     if (z1 <= NEAR) continue;                                    // wholly behind the camera
     const z0 = Math.max(rz0, NEAR);
     for (const side of [-1, 1]) {
-      if (!solid(k, side) && solid(k + 1, side) && !solid(k, 0)) frontWall(ctx, side, z1, tile(k + 1, side), null, cell(k + 1, side));
+      if (!solid(k, side) && solid(k + 1, side) && !solid(k, 0)) frontWall(ctx, side, z1, tile(k + 1, side), null, cell(k + 1, side), decorAt(...cell(k + 1, side), (p.dir + 2) % 4));
     }
     if (solid(k, 0)) continue;
     const [cx, cy] = cell(k, 0);
@@ -384,9 +424,9 @@ export function render(ctx, map, p, t = 0, view = {}) {
         gem: item.id === 'redgem' ? [230, 40, 70] : [60, 120, 255], xp: [255, 240, 180] }[item.kind] || [230, 200, 70];
       floorMark(ctx, z0, z1, 0.25, shade(col, (z0 + z1) / 2), shade([255, 255, 255].map((v, i) => col[i] * 0.5), (z0 + z1) / 2));
     }
-    if (solid(k, -1)) sideWall(ctx, -0.5, z0, z1, tile(k, -1), cell(k, -1));
-    if (solid(k, 1)) sideWall(ctx, 0.5, z0, z1, tile(k, 1), cell(k, 1));
-    if (solid(k + 1, 0)) frontWall(ctx, 0, z1, tile(k + 1, 0), switchOn(k + 1, 0), cell(k + 1, 0));
+    if (solid(k, -1)) sideWall(ctx, -0.5, z0, z1, tile(k, -1), cell(k, -1), decorAt(...cell(k, -1), (p.dir + 1) % 4));
+    if (solid(k, 1)) sideWall(ctx, 0.5, z0, z1, tile(k, 1), cell(k, 1), decorAt(...cell(k, 1), (p.dir + 3) % 4));
+    if (solid(k + 1, 0)) frontWall(ctx, 0, z1, tile(k + 1, 0), switchOn(k + 1, 0), cell(k + 1, 0), decorAt(...cell(k + 1, 0), (p.dir + 2) % 4));
     if (k >= 1) drawNpc(ctx, map, cx, cy, rz0, z1);
     if (k >= 1 && p.enemies) drawEnemies(ctx, p, cx, cy, rz0, z1, t);
   }

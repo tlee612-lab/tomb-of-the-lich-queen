@@ -47,6 +47,16 @@ floors.forEach((f, fi) => {
     assert.doesNotThrow(() => createHero({ id: n.id, name: n.name, class: n.class, attrs: n.attrs }), `${n.name} is a valid hero`);
     assert.ok(!f.monsters.some(m => m.x === n.x && m.y === n.y), `${here}: no monster stands on a prisoner`);
   }
+  const decorSeen = new Set();
+  for (const d of f.decor) {
+    assert.equal(tileAt(f, d.x, d.y), '#', `${here}: decoration at ${d.x},${d.y} is on a wall`);
+    assert.ok(['hole', 'grate'].includes(d.kind), `${here}: known decoration ${d.kind}`);
+    assert.ok(walkable(d.x + DX[d.face], d.y + DY[d.face]), `${here}: decoration at ${d.x},${d.y} can be seen from open floor`);
+    const spot = `${d.x},${d.y},${d.face}`;
+    assert.ok(!decorSeen.has(spot), `${here}: one decoration per wall face`); decorSeen.add(spot);
+    assert.ok(!f.inscriptions.some(i => i.x === d.x && i.y === d.y && i.face === d.face), `${here}: no decoration under an inscription plaque`);
+    assert.ok(!f.switches.some(s => s.x === d.x && s.y === d.y && s.face === d.face) && !f.lamps.some(l => l.x === d.x && l.y === d.y && l.face === d.face), `${here}: none over a switch or lamp`);
+  }
   for (const [k, dir] of Object.entries(f.oneway)) {
     const [x, y] = k.split(',').map(Number); assert.equal(tileAt(f, x, y), 'W', `${here}: one-way door sits on a W tile`);
     assert.ok(walkable(x - DX[dir], y - DY[dir]) && walkable(x + DX[dir], y + DY[dir]), `${here}: both sides of the one-way door at ${k} are open floor`);

@@ -167,3 +167,29 @@ button { touch-action:manipulation; }             /* no double-tap zoom on the b
   .hero .qs { justify-content:flex-start; }
   .hero .atk kbd, .hero .spell .sc { float:none; flex:none; }
 }
+
+/* On-screen controls over the view (phones). Faint glass buttons so the dungeon still shows through; the pad below the view goes away. */
+#touch { display:none; }
+@media (max-width:700px), (orientation:landscape) and (max-height:520px) {
+  #pad { display:none; }
+  #touch { display:block; position:absolute; inset:0; pointer-events:none; }
+  #touch button, #touch .tbtn { pointer-events:auto; touch-action:manipulation; -webkit-tap-highlight-color:transparent; user-select:none; }
+  #tl { position:absolute; left:6px; bottom:6px; display:grid; grid-template-columns:repeat(3,46px); grid-template-rows:46px 46px; gap:4px;
+        grid-template-areas:". f ." "l b r"; }
+  #tl [data-act=fwd] { grid-area:f; } #tl [data-act=strL] { grid-area:l; } #tl [data-act=back] { grid-area:b; } #tl [data-act=strR] { grid-area:r; }
+  #tr { position:absolute; right:6px; bottom:6px; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  #tturn { display:flex; gap:4px; }
+  #tatk { display:grid; grid-template-columns:repeat(2,44px); gap:4px; }
+  #touch button { background:rgba(18,13,9,.28); color:rgba(230,215,176,.62); border:2px solid rgba(230,215,176,.32); border-radius:50%; font:inherit; font-size:20px; padding:0; }
+  #tl button, #tturn button { width:46px; height:46px; }
+  #touch button:active { background:rgba(230,215,176,.45); }
+  #touch .tbtn { position:relative; overflow:hidden; width:44px; height:44px; }
+  #touch .tbtn img, #touch .tbtn b { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.5; }
+  #touch .tbtn b { display:grid; place-items:center; }
+  #touch .tbtn .tfill { position:absolute; left:0; right:0; bottom:0; height:0; background:rgba(0,0,0,.6); z-index:1; }
+  #touch .tbtn.ready { border-color:rgba(201,162,74,.9); } #touch .tbtn.ready img { opacity:.85; }
+  #touch .tbtn.fallen { opacity:.3; }
+  #touchHide { position:absolute; left:6px; top:6px; width:30px; height:30px; font-size:14px; }
+  #touch.off #tl, #touch.off #tr { display:none; }
+  #minimap { width:19%; }                                  /* keeps clear of the turn buttons below it */
+}

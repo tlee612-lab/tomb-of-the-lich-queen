@@ -45,6 +45,11 @@
   <div id="stage">
   <div id="viewframe"><canvas id="view" width="448" height="300"></canvas>
     <canvas id="minimap" width="99" height="99" title="Tap for the full map (N)"></canvas>
+    <div id="touch">
+      <div id="tl"><button type="button" data-act="fwd">&#9650;</button><button type="button" data-act="strL">&#9664;</button><button type="button" data-act="back">&#9660;</button><button type="button" data-act="strR">&#9654;</button></div>
+      <div id="tr"><div id="tturn"><button type="button" data-act="turnL">&#8630;</button><button type="button" data-act="turnR">&#8631;</button></div><div id="tatk"></div></div>
+      <button type="button" id="touchHide" aria-label="Hide or show the on-screen controls">&#9673;</button>
+    </div>
     <div id="overlay" hidden><div id="overlayText"></div><button id="loadBtn" type="button" hidden>Load autosave</button><button id="retryBtn" type="button" hidden>Try again</button></div></div>
   <div id="log"></div>
   </div>

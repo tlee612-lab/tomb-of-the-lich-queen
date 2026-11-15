@@ -281,6 +281,10 @@ document.querySelectorAll('#pad button').forEach(b => b.addEventListener('click'
 // The on-screen controls over the view (phones): they act the instant a finger lands, and a hide switch clears them away.
 document.querySelectorAll('#tl button').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); act(b.dataset.act); }));
 $('touchHide').addEventListener('click', () => $('touch').classList.toggle('off'));
+// On phones the Rest / Menu / Journal / Sound buttons live in a narrow column left of the view; elsewhere they stay in the controls row.
+const phoneMQ = matchMedia('(max-width:700px), (orientation:landscape) and (max-height:520px)');
+const placeSys = () => { if (phoneMQ.matches) $('stage').insertBefore($('sys'), $('viewframe')); else $('nav').appendChild($('sys')); };
+placeSys(); phoneMQ.addEventListener('change', placeSys);
 // The minimap can be tucked away; the choice is remembered.
 const setMapHidden = hide => { $('viewframe').classList.toggle('nomap', hide); try { localStorage.setItem('totlq.nomap', hide ? '1' : ''); } catch { /* not remembered */ } };
 try { if (localStorage.getItem('totlq.nomap')) $('viewframe').classList.add('nomap'); } catch { /* storage unavailable */ }
@@ -372,7 +376,7 @@ function loop(t) {
   if (anim) { view = animView(anim, t); if (view.done) { anim = null; animSnapshot = null; } else view.snapshot = animSnapshot; }
   render(ctx, game.map, game, t, view);
   drawMap($('minimap'), game, 5);
-  $('compass').textContent = DIR_NAMES[game.dir];
+  $('compass').textContent = $('viewDir').textContent = DIR_NAMES[game.dir];
   $('floorName').textContent = `Floor ${game.floor + 1} of ${game.floors.length}: ${game.map.name}`;
   updateParty(); updateOverlay();
   requestAnimationFrame(loop);

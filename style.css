@@ -62,7 +62,7 @@ body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.3 "Courier 
   body { padding:6px; }
   #game { grid-template-columns:auto minmax(0,1fr); grid-template-rows:auto auto minmax(0,1fr); gap:6px; align-items:start; }
   #stage { grid-column:1; grid-row:1 / span 4; order:0; justify-self:start; position:sticky; top:0; }
-  #view { width:min(58vw, calc((100vh - 76px) * 1.4933)); }
+  #view { width:min(50vw, calc((100vh - 76px) * 1.4933)); }
   #nav { grid-column:2; grid-row:1; order:0; }
   #floorName { grid-column:2; grid-row:2; order:0; font-size:12px; }      /* straight under the pad, not stranded below the party */
   #party { grid-column:2; grid-row:3; order:0; }
@@ -179,16 +179,21 @@ button { touch-action:manipulation; }             /* no double-tap zoom on the b
 @media (max-width:700px), (orientation:landscape) and (max-height:520px) {
   #touch { display:block; position:absolute; inset:0; pointer-events:none; }
   #touch button { pointer-events:auto; touch-action:manipulation; -webkit-tap-highlight-color:transparent; user-select:none; background:none; border:0; padding:0; font:inherit; }
-  #tl { position:absolute; inset:0; pointer-events:none; }                        /* the four arrows sit on the edges of the view */
-  #tl button { position:absolute; width:48px; height:44px; font-size:30px; line-height:44px; color:transparent; opacity:1; -webkit-text-stroke:1.6px rgba(235,225,195,.75);
-    text-shadow:none; }
+  /* all six directions in one column down the left edge of the view: turn L, turn R, forward, step L, step R, back */
+  #tl { position:absolute; left:4px; top:6px; bottom:6px; width:42px; display:flex; flex-direction:column; gap:3px; pointer-events:none; }
+  #tl button { flex:1 1 0; min-height:0; max-height:46px; width:100%; font-size:24px; line-height:1; color:transparent; opacity:1; -webkit-text-stroke:1.5px rgba(235,225,195,.75); text-shadow:none; }
   #tl button:active { -webkit-text-stroke-color:#ffd866; }
-  #tl [data-act=fwd] { top:4px; left:50%; margin-left:-24px; } #tl [data-act=back] { bottom:4px; left:50%; margin-left:-24px; }
-  #tl [data-act=strL] { left:2px; top:50%; margin-top:-22px; } #tl [data-act=strR] { right:2px; top:50%; margin-top:-22px; }
-  #pad { display:none; }                                                          /* every direction is on the view now */
-  #touchHide { position:absolute; left:6px; bottom:6px; width:30px; height:30px; font-size:16px; color:#fff; opacity:.8; text-shadow:0 0 3px #000, 0 0 3px #000; }
+  #viewDir { position:absolute; top:6px; left:50%; transform:translateX(-50%); font-size:22px; font-weight:bold; color:transparent; -webkit-text-stroke:1.2px rgba(235,225,195,.8); pointer-events:none; }
+  #pad, #compass, #nav { display:none; }                                          /* every direction is on the view now */
+  #touchHide { position:absolute; right:6px; top:6px; width:30px; height:30px; font-size:16px; color:#fff; opacity:.8; text-shadow:0 0 3px #000, 0 0 3px #000; }
   #touch.off #tl { display:none; }
   #minimap { width:19%; } #mapHide { right:calc(19% + 12px); } #viewframe.nomap #mapHide { right:6px; }
-  #tl [data-act=turnL] { top:4px; left:4px; } #tl [data-act=turnR] { top:4px; right:4px; }
+  /* the four menu buttons: a narrow column to the left of the view */
+  #stage { grid-template-columns:54px min-content; column-gap:4px; }
+  #stage #sys { grid-column:1; grid-row:1; display:flex; flex-direction:column; gap:4px; align-self:stretch; }
+  #stage #sys button { flex:1; min-width:0; padding:1px; font-size:11px; white-space:normal; overflow:hidden; line-height:1.1; }
+  #stage #viewframe { grid-column:2; grid-row:1; }
+  #stage #log { grid-column:1 / -1; }
   #log { height:4.2em; }
 }
+@media (max-width:700px) and (orientation:portrait) { #view { width:calc(100vw - 82px); } }

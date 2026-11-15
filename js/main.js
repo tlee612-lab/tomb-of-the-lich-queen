@@ -3,8 +3,11 @@ import { loadCampaign } from './data/floors.js';
 import { newGame, step, turn, interact, look } from './world.js';
 import { render } from './render.js';
 import { runSetup, portraitHTML } from './setup.js';
-import { heroAttack, canAct, enemyAhead, retry, alive } from './combat.js';
-import { castSpell, useQuick, rest, advance, memorizedCount } from './magic.js';
+import { heroAttack, canAct, enemyAhead, retry, alive, heroDefense } from './combat.js';
+import { WEAPONS } from './data/weapons.js';
+import { GEAR, canUse } from './data/gear.js';
+import { equip } from './gear.js';
+import { castSpell, useQuick, rest, advance, memorizedCount, HUNGER_MS } from './magic.js';
 import { SPELLS } from './data/spells.js';
 import { slotsFor, loadoutFor } from './spellbook.js';
 import { saveGame, loadGame, listSaves, describeSave } from './save.js';
@@ -163,6 +166,26 @@ function renderModal() {
       ${document.fullscreenEnabled ? `<h3>Screen</h3><button type="button" data-full>${document.fullscreenElement ? 'Leave full screen' : 'Full screen (hides the browser bar)'}</button>` : ''}
       <h3>Difficulty</h3><div class="diffrow">${DIFFICULTY_IDS.map(id => `<button type="button" data-diff="${id}"${diff(game) === DIFFICULTIES[id] ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"'}>${DIFFICULTIES[id].name}</button>`).join(' ')}</div>
       <p class="note">${esc(diff(game).text)} You can change this at any time, including after a defeat.</p>`;
+  } else if (modalTab === 'inventory') {
+    const mod = v => Math.floor((v - 10) / 2);
+    const ITEM_NAMES = { bronze: 'bronze key', ember: 'ember key', jail: "jailer's key", cell: 'cell key', redgem: 'ruby', bluegem: 'sapphire' };
+    const bag = game.bag.length ? game.bag.map(id => esc(ITEM_NAMES[id] || id)).join(', ') : 'nothing';
+    const nextMeal = Math.max(0, Math.ceil((HUNGER_MS - game.hungerMs) / 1000)), mm = Math.floor(nextMeal / 60), ss = String(nextMeal % 60).padStart(2, '0');
+    body.innerHTML = `<h3>Party</h3>
+      <p class="note"><b>Bag:</b> ${bag}<br><b>Rations:</b> ${game.rations}${game.starving ? ' (starving!)' : ` (the party eats in ${mm}:${ss})`}<br>
+      <b>Light:</b> ${game.lightMs > 0 ? Math.ceil(game.lightMs / 1000) + ' s of Lantern Ward left' : 'none cast'}<br>
+      <b>Spare gear:</b> ${game.stash.length ? game.stash.map(id => esc(id)).join(', ') : 'none (look for weapons and armor in the tomb)'}</p>` +
+      game.party.map(h => {
+        const w = WEAPONS[h.weapon], [n, s, b] = w.dice, m = mod(h.attrs[w.stat]);
+        const lo = Math.max(1, n + b + m), hi = Math.max(1, n * s + b + m), secs = (Math.max(300, Math.round(w.ms * (1 - 0.03 * mod(h.attrs.agility)))) / 1000).toFixed(1);
+        const quick = h.quickSlots.map(q => (q ? esc(q.name) : 'empty')).join(', ');
+        return `<div class="entry"><b>${esc(h.name)}${h.npc ? ' (joined)' : ''}</b>${h.class} level ${h.level} · HP ${h.hp}/${h.hpMax} · ${h.row ? 'back' : 'front'} row${alive(h) ? '' : ' · FALLEN'}<br>
+          Weapon: ${h.weapon}, ${lo}-${hi} damage (${w.stat} ${m >= 0 ? '+' : ''}${m}), every ${secs} s${w.reach ? ', reaches from the back row' : w.ranged ? ', ranged' : ''}<br>
+          Armor: ${esc(h.armorName || 'none')} (${h.armor || 0}) · Defense ${heroDefense(h)}${h.bulwarkMs > 0 ? ' (Bulwark)' : ''}${h.veil ? ' · Mirror Veil up' : ''}<br>
+          Accessory: ${h.accessory ? `${esc(h.accessory)} (${esc(GEAR[h.accessory].text)})` : 'none'}<br>
+          Quick slots: ${quick}${h.poisonMs > 0 ? '<br>Poisoned' : ''}${h.webMs > 0 ? '<br>Webbed' : ''}
+          ${[...new Set(game.stash)].filter(id => canUse(h, id)).map(id => `<br><button type="button" data-equip="${game.party.indexOf(h)}|${esc(id)}">Equip ${esc(id)}${GEAR[id].slot === 'armor' ? ` (armor ${GEAR[id].armor})` : GEAR[id].slot === 'accessory' ? ` (${esc(GEAR[id].text)})` : ''}</button>`).join('')}</div>`;
+      }).join('');
   } else if (modalTab === 'spells') {
     const casters = game.party.map((h, i) => ({ h, i })).filter(({ h }) => slotsFor(h) > 0);
     body.innerHTML = '<h3>Memorize spells</h3><p class="note">Choose what each slot holds. Your choices take effect the next time the party rests.</p>' +
@@ -192,6 +215,7 @@ function renderModal() {
       <tr><td>Spell buttons</td><td>Enemy spells fire at the monster ahead. Ally spells ask you to click a hero. <kbd>Esc</kbd> cancels.</td></tr>
       <tr><td><kbd>R</kbd></td><td>Rest (costs a ration, not with enemies near)</td></tr>
       <tr><td><kbd>P</kbd></td><td>Pause</td></tr>
+      <tr><td><kbd>I</kbd></td><td>Inventory: the bag, rations and each hero's gear</td></tr>
       <tr><td><kbd>J</kbd></td><td>Journal</td></tr>
       <tr><td><kbd>M</kbd></td><td>Sound on or off</td></tr>
       <tr><td><kbd>Esc</kbd></td><td>This menu</td></tr></table>
@@ -202,6 +226,11 @@ $('modal').addEventListener('click', e => {
   const t = e.target.closest('button'); if (!t) return;
   if (t.dataset.tab) { modalTab = t.dataset.tab; armedSlot = null; renderModal(); }
   else if (t.id === 'closeModal') closeModal();
+  else if (t.dataset.equip) {
+    const [i, id] = t.dataset.equip.split('|'), r = equip(game, +i, id);
+    if (!r.ok) game.msgs.push(r.why);
+    flushMessages(); renderModal();
+  }
   else if (t.dataset.full !== undefined) {
     const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
     Promise.resolve(p).catch(() => {}).finally(() => renderModal());
@@ -230,6 +259,7 @@ addEventListener('keydown', e => {
   if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;            // typing in a form
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (k === 'Escape') { e.preventDefault(); if (pending) cancelTarget(); else if (modalOpen) closeModal(); else openModal('menu'); return; }
+  if (k === 'i') { e.preventDefault(); if (modalOpen && modalTab === 'inventory') closeModal(); else openModal('inventory'); return; }
   if (k === 'j') { e.preventDefault(); if (modalOpen && modalTab === 'journal') closeModal(); else openModal('journal'); return; }
   if (k === 'm') { e.preventDefault(); toggleSound(); return; }
   if (modalOpen) return;

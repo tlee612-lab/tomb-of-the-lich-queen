@@ -291,3 +291,30 @@ Findings: single file through the door, every hero can hit the one monster ahead
 about 30% charging in, and loses a hero in roughly 1 run in 20 at level 2 on Normal (1 in 5 on Hard). Win rate is about 100% at every
 setting. That fits optional content: worth doing carefully, never a wall. A fourth guard made the bot stall (nothing came through the
 door), so it was left out. If the wing should be harder, add a ranged monster that shoots down the corridor rather than more melee.
+
+## Gear (weapons, armor and accessories)
+
+The balance bot now picks up gear and equips it sensibly (better weapon by damage per second, higher armor, a free accessory), and
+a player who takes everything (`careful`) also clears the optional prison wing on floor 2 and frees Tavin. `*-nogear` variants play the
+same routes without equipping anything, so the difference is the effect of gear. 100 runs each, slow pace, Normal unless noted:
+
+| player | without gear | with gear |
+|---|---|---|
+| careful | 100% | 100% |
+| rush (takes what lies in the open) | 73% | 94% |
+| average (rests late) | 26% | 64% |
+| careful, Hard | 79% | 100% |
+| rush, Hard | 29% | 57% |
+
+Gear is much stronger than its numbers suggest. Two points of armor change how often enemies hit, a ring adds health to every fight, and several
+pieces lie in the open on the main route, so an ordinary player collects them. Normal is easier than the previous retune, and Hard no longer
+challenges a careful player. Two honest ways to restore the old feel: lower the gear (for example drop Plate Harness to armor 4 and Ring of
+Vigor to +4), or raise the monsters' damage (Hard `enemyDmg` from 1.3 to about 1.5). Neither has been done. The test `tests/balance.mjs`
+now expects damage to climb with depth rather than floor by floor, because floor 2 includes the prison fight for a player who takes everything.
+
+### Hard retuned after gear
+
+Hard monster damage went from 1.3 to 1.5. With gear, careful on Hard wins 98% (it was 100% at 1.3) and rush on Hard 32% (57% at 1.3,
+29% before gear), so rush is back to its pre-gear level. A careful player who takes all the gear and the prison NPC stays strong on Hard,
+which is a fair reward for finding things. At 1.65 rush fell to 22%, which felt too punishing. Normal and Easy are unchanged by this and
+are easier than before gear (see the table above).

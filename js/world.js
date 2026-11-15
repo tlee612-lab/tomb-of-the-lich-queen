@@ -5,6 +5,8 @@ import { buildEnemies, enemyAt, alive, dice, gainXp, XP_LEVELS } from './combat.
 import { useShrine } from './magic.js';
 import { createHero } from './party.js';
 import { CLASSES } from './data/classes.js';
+import { GEAR } from './data/gear.js';
+const CLASSES_USING = id => GEAR[id].classes;
 
 // A game is a list of floors (or a single map, which is wrapped into a one-floor game).
 export function newGame(mapOrFloors, rng = Math.random) {
@@ -13,7 +15,7 @@ export function newGame(mapOrFloors, rng = Math.random) {
   const map = floors[0];
   return { floors, floor: 0, map, x: map.start.x, y: map.start.y, dir: map.start.dir, bag: [], msgs: [], rng,
     party: [], enemies: map.enemies, fx: [], paused: false, defeated: false, won: false, journal: [],
-    difficulty: 'normal', queenDown: false, rations: 3, hungerMs: 0, starving: false, starveMs: 0, lightMs: 0, sanctMs: 0 };
+    difficulty: 'normal', queenDown: false, stash: [], rations: 3, hungerMs: 0, starving: false, starveMs: 0, lightMs: 0, sanctMs: 0 };
 }
 
 const say = (g, m) => g.msgs.push(m);
@@ -87,6 +89,10 @@ function pickUp(g, idx) {
     if (!h) { say(g, `You see a ${item.name}, but every quick slot is full.`); return; }
     h.quickSlots[h.quickSlots.indexOf(null)] = { id: item.id, name: item.name };
     say(g, `${h.name} takes the ${item.name}.`);
+  } else if (item.kind === 'gear') {
+    g.stash.push(item.id);
+    const users = [...new Set(CLASSES_USING(item.id))].join(' or ');
+    say(g, `You find ${item.id}. ${GEAR[item.id].text || ''} (For a ${users}. Equip it in the Inventory: I)`);
   } else if (item.kind === 'xp') {
     say(g, `You discover a ${item.name}! (+${item.amount} XP each)`);
     for (const h of g.party.filter(alive)) gainXp(g, h, item.amount);

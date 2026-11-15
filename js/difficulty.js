@@ -10,8 +10,8 @@ export const DIFFICULTIES = {
             text: 'Monsters hit about 40% softer, rests heal more and are rarely interrupted, and you start with an extra ration. For learning the tomb, or a way past the Queen.' },
   normal: { name: 'Normal', enemyDmg: 1,   restHeal: 0.5,  wanderer: 0.25, rations: 3,
             text: 'The game as designed. Careful play wins; careless play does not.' },
-  hard:   { name: 'Hard',   enemyDmg: 1.3, restHeal: 0.4,  wanderer: 0.35, rations: 3,
-            text: 'Monsters hit about 30% harder, rests heal less and are interrupted more often. For players who found Normal easy.' },
+  hard:   { name: 'Hard',   enemyDmg: 1.5, restHeal: 0.4,  wanderer: 0.35, rations: 3,
+            text: 'Monsters hit about 50% harder, rests heal less and are interrupted more often. For players who found Normal easy.' },
 };
 export const DEFAULT_DIFFICULTY = 'normal';
 export const DIFFICULTY_IDS = Object.keys(DIFFICULTIES);

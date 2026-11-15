@@ -43,13 +43,13 @@ const bite = level => {
 };
 assert.equal(bite('normal'), 8, 'Normal: unchanged');
 assert.equal(bite('easy'), 5, 'Easy: 8 * 0.6 = 4.8, rounds to 5');
-assert.equal(bite('hard'), 10, 'Hard: 8 * 1.3 = 10.4, rounds to 10');
+assert.equal(bite('hard'), 12, 'Hard: 8 * 1.5 = 12');
 const minimum = level => {
   const g = setup(script(0.0, 0.7, 0.5) /* target Brannoch, d20 = 15 (a hit), d4 = 3 */, [{ type: 'tomb_rat', x: 1, y: 2 }]);
   setDifficulty(g, level); g.x = 1; g.y = 1; g.dir = 2; g.enemies[0].atkCd = 0; tick(g, 10);
   return g.party[0].hpMax - g.party[0].hp + g.party[1].hpMax - g.party[1].hp;
 };
-assert.equal(minimum('normal'), 3); assert.equal(minimum('easy'), 2, '3 * 0.6 = 1.8, rounds to 2'); assert.equal(minimum('hard'), 4, '3 * 1.3 = 3.9, rounds to 4');
+assert.equal(minimum('normal'), 3); assert.equal(minimum('easy'), 2, '3 * 0.6 = 1.8, rounds to 2'); assert.equal(minimum('hard'), 5, '3 * 1.5 = 4.5, rounds to 5');
 
 // ---- resting heals more on Easy and less on Hard; wanderers come less/more often ---------------------------------------------------
 const rested = (level, roll) => {

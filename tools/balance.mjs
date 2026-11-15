@@ -11,6 +11,9 @@ import { newGame, step, turn, interact } from '../js/world.js';
 import { rosterHeroes, formParty } from '../js/party.js';
 import { heroAttack, canAct, enemyAt, enemyAhead, distances, alive } from '../js/combat.js';
 import { castSpell, useQuick, rest, advance, memorizedCount } from '../js/magic.js';
+import { GEAR, canUse } from '../js/data/gear.js';
+import { WEAPONS } from '../js/data/weapons.js';
+import { equip } from '../js/gear.js';
 
 const mulberry32 = a => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 // Pace: how long the bot takes per action. 'quick' is a sharp player; 'human' is nearer a first-time player
@@ -36,6 +39,9 @@ export const VARIANTS = {
   'no-healer':  { spells: true,  potions: true,  rest: true,  items: 'all',  party: 'no-healer', restHero: 0.5, restAvg: 0.7 },
   'no-cutpurse':{ spells: true,  potions: true,  rest: true,  items: 'all',  party: 'no-cutpurse', restHero: 0.5, restAvg: 0.7 },
   'no-mage':    { spells: true,  potions: true,  rest: true,  items: 'all',  party: 'no-mage', restHero: 0.5, restAvg: 0.7 },
+  'careful-nogear': { spells: true, potions: true, rest: true, items: 'all', party: 'standard', restHero: 0.5, restAvg: 0.7, gear: false },
+  'rush-nogear': { spells: true, potions: true, rest: true, items: 'visible', party: 'standard', restHero: 0.5, restAvg: 0.7, gear: false },
+  'average-nogear': { spells: true, potions: true, rest: true, items: 'visible', party: 'standard', restHero: 0.3, restAvg: 0.5, gear: false },
   // the difficulty setting (js/difficulty.js): the same players on Easy and Hard
   'average-easy': { spells: true, potions: true, rest: true, items: 'visible', party: 'standard', restHero: 0.3, restAvg: 0.5, difficulty: 'easy' },
   'careless-easy': { spells: false, potions: false, rest: false, items: 'none', party: 'standard', difficulty: 'easy' },
@@ -64,7 +70,29 @@ export function simulate(seed, opts, pace = 'quick') {
     if (/shrine blazes/.test(m)) stat.prayers++;
     if (/'s (Cinder Dart|Frostbind)|heals .* for/.test(m)) stat.spells++;
   };
+  // A sensible player equips what they find: the better weapon (damage per second), the higher armor, and any free accessory.
+  const gmod = v => Math.floor((v - 10) / 2);
+  const wScore = (h, id) => { const w = WEAPONS[id], [n, sd, b] = w.dice; return (n * (sd + 1) / 2 + b + gmod(h.attrs[w.stat])) / w.ms; };
+  let lastStash = '';
+  function equipBest() {
+    if (opts.gear === false) { lastStash = g.stash.join('|'); return; }
+    for (let guard = 0; guard < 30; guard++) {
+      let did = false;
+      for (const id of [...new Set(g.stash)]) {
+        for (let i = 0; i < g.party.length && !did; i++) {
+          const h = g.party[i]; if (!canUse(h, id)) continue;
+          const slot = GEAR[id].slot;
+          const better = slot === 'weapon' ? wScore(h, id) > wScore(h, h.weapon) * 1.02 : slot === 'armor' ? GEAR[id].armor > h.armor : !h.accessory;
+          if (better && equip(g, i, id).ok) did = true;
+        }
+        if (did) break;
+      }
+      if (!did) break;
+    }
+    lastStash = g.stash.join('|');
+  }
   function wait(ms) {
+    if (g.stash.join('|') !== lastStash) equipBest();
     while (ms > 0) {
       const dt = Math.min(100, ms); advance(g, dt); now += dt; ms -= dt;
       for (const m of g.msgs.splice(0)) seenMsg(m);
@@ -269,25 +297,31 @@ export function simulate(seed, opts, pace = 'quick') {
   const ROUTES = [
     () => {                                                      // 1. The Barrow Halls
       goTo(9, 8); act(9, 2, 1);
-      goTo(12, 2); if (V) take([[14, 1], [14, 3]]);
+      goTo(12, 2); if (V) take([[14, 1], [14, 3], [11, 1]]);
       vault(14, 2, 1, [[16, 1], [16, 2]]);
-      if (T) { act(5, 6, 3); take([[1, 8], [1, 9], [2, 9]]); }
+      if (T) { act(5, 6, 3); take([[1, 8], [1, 9], [2, 9], [3, 8]]); }
+      if (V) take([[14, 10]]);
       pray(11, 9); goTo(12, 12);
     },
     () => {                                                      // 2. The Drowned Ossuary
-      if (V) take([[3, 1], [2, 3], [7, 3]]);
-      goTo(10, 1); pray(10, 3); vault(10, 2, 1, [[12, 1], [13, 1]]); goTo(6, 6); goTo(2, 8); goTo(1, 6);
+      if (V) take([[3, 1], [2, 3], [7, 3], [4, 3], [11, 8]]);
+      goTo(10, 1); pray(10, 3); vault(10, 2, 1, [[12, 1], [13, 1]]); goTo(6, 6); goTo(2, 8); if (T) take([[1, 8]]); goTo(1, 6);
+      if (T && hasKey('jail')) {                                 // the prison wing: guards, cell keys, a prisoner to free
+        act(8, 8, 2); take([[10, 12], [9, 12], [6, 12]]);
+        act(6, 11, 3); take([[4, 10]]); act(4, 10, 3); act(3, 10, 3); take([[4, 12]]);
+      }
       goTo(13, 9); turnToward(2); step(g, 1, 0); wait(USE_MS);
-      if (T) { act(13, 8, 1); take([[15, 9], [16, 9], [16, 10]]); }
+      if (T) { act(13, 8, 1); take([[15, 9], [16, 9], [16, 10], [15, 10]]); }
       goTo(13, 12);
     },
     () => {                                                      // 3. The Cinder Court (dark, with pits)
       if (V) take([[2, 3]]);
       vault(2, 3, 2, [[1, 5], [3, 5]]);
-      goTo(16, 1); if (T) { act(16, 2, 1); take([[13, 5], [12, 5]]); }
+      goTo(16, 1); if (V) take([[16, 2]]); if (T) { act(16, 2, 1); take([[13, 5], [12, 5]]); }
+      if (V) take([[15, 5]]);
       goTo(13, 9); pray(11, 10);
       goTo(9, 8);                                                // through the ember door: the guards come for us
-      if (V) take([[8, 10], [5, 7]]);
+      if (V) take([[8, 10], [5, 7], [9, 10]]);
       goTo(7, 12);
     },
     () => {                                                      // 4. The Queen's Chamber

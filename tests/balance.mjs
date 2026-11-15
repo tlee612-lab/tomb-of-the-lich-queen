@@ -23,7 +23,8 @@ const careful = summarize('careful', runs('careful', 'human')), careless = summa
 assert.ok(careful.winRate >= 0.7, `a careful player usually wins (got ${careful.winRate})`);
 assert.ok(careless.winRate <= 0.3, `ignoring spells, potions and rest does not work (got ${careless.winRate})`);
 assert.ok(careful.winRate - careless.winRate >= 0.4, 'playing well matters');
-assert.ok(careful.floorDamage[0] < careful.floorDamage[1] && careful.floorDamage[1] < careful.floorDamage[2], 'damage climbs from floor to floor');
+// floor 2 includes the optional prison fight for a player who takes everything, so it can outweigh floor 3
+assert.ok(careful.floorDamage[0] < careful.floorDamage[1] && careful.floorDamage[0] < careful.floorDamage[2] && careful.floorDamage[2] < careful.floorDamage[3], 'damage climbs with depth');
 assert.ok(careful.floorDamage[3] > careful.floorDamage[0] * 3, 'the finale is far harder than the first floor');
 assert.ok(careful.rests >= 1.5, 'resting is part of a normal run');
 assert.ok(careful.potions >= 0.5, 'potions get used');

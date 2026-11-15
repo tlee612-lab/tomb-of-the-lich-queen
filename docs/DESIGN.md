@@ -150,6 +150,15 @@ Real-time, cooldown-driven.
 - Each hero has 2 **quick slots** for potions and scrolls, used with one click.
 - Weapons show damage range. Armor shows Defense and damage reduction.
 - Keys, gems and quest items go in a shared bag.
+- **Gear (built).** Eight pieces of weapons and armor lie on floors 1 to 3 (`js/data/gear.js`; weapons also have stats in `js/data/weapons.js`).
+  Picking one up puts it in the party's shared **spare gear**. Open the Inventory (menu or `I`) and press **Equip** under a hero to swap it in;
+  the old piece goes back to the spare gear. Each piece lists the classes that may use it. The finds: Tombguard Sword (Warden, floor 1 hidden cache),
+  Boiled Leather (floor 1, shrine room), Ward Robe and Silver Sling (floor 2), Stiletto and Chain Mail (floor 2 prison), Plate Harness (floor 3, armor 5, Warden only),
+  Rune Staff (floor 3, a Magister staff that swings with Wits). Each hero also has one **accessory** slot (no class starts with one):
+  Ring of Vigor (+6 max HP, floor 2 reliquary), Charm of Warding (+1 Defense, floor 1), Ring of Keen Edge (+1 per weapon blow, Warden and Cutpurse, floor 3),
+  Sage Pendant (+1 to every spell's damage or healing, Votary and Magister, floor 2 prison). Gear looked small on paper but is not: see docs/BALANCE.md,
+  "Gear", where a player who picks up and equips what lies in the open wins far more often.
+- The **Inventory tab** also lists the bag by name, rations and time to the next meal, light, and each hero's weapon (real damage range and speed), armor, Defense and quick slots.
 - Food is a shared ration count.
 
 ## 8. The dungeon: Tomb of the Lich Queen

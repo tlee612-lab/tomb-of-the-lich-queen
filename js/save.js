@@ -13,7 +13,7 @@ export function serialize(g) {
   g.map.enemies = g.enemies;                               // the current floor's live monsters
   return {
     v: SAVE_VERSION, savedAt: Date.now(),
-    floor: g.floor, x: g.x, y: g.y, dir: g.dir, bag: [...g.bag], rations: g.rations, difficulty: g.difficulty,
+    floor: g.floor, x: g.x, y: g.y, dir: g.dir, bag: [...g.bag], rations: g.rations, difficulty: g.difficulty, stash: [...g.stash],
     hungerMs: g.hungerMs, starving: g.starving, starveMs: g.starveMs, lightMs: g.lightMs, sanctMs: g.sanctMs,
     journal: clone(g.journal), party: clone(g.party),
     floors: g.floors.map(f => clone({
@@ -48,7 +48,7 @@ export function restore(data, rng = Math.random) {
   });
   Object.assign(g, { floor: d.floor, map: floors[d.floor], x: d.x, y: d.y, dir: d.dir, bag: d.bag, rations: d.rations,
     hungerMs: d.hungerMs || 0, starving: !!d.starving, starveMs: d.starveMs || 0, lightMs: d.lightMs || 0, sanctMs: d.sanctMs || 0,
-    journal: d.journal, party: d.party, difficulty: DIFFICULTIES[d.difficulty] ? d.difficulty : DEFAULT_DIFFICULTY });
+    journal: d.journal, party: d.party, stash: Array.isArray(d.stash) ? d.stash : [], difficulty: DIFFICULTIES[d.difficulty] ? d.difficulty : DEFAULT_DIFFICULTY });
   g.enemies = g.map.enemies;
   return g;
 }

@@ -4,6 +4,7 @@ import { MONSTERS } from './data/monsters.js';
 import { WEAPONS } from './data/weapons.js';
 import { slotsFor, loadoutFor, learnedAt } from './spellbook.js';
 import { diff } from './difficulty.js';
+import { accessoryOf } from './data/gear.js';
 
 const mod = v => Math.floor((v - 10) / 2);
 export const XP_LEVELS = [0, 50, 130, 260, 420];   // XP_LEVELS[n] = XP needed to leave level n
@@ -21,7 +22,7 @@ export const addFx = (g, cell, text, color) => g.fx.push({ cell: { x: cell.x, y:
 
 export const alive = h => h.hp > 0;
 export const BULWARK_DEF = 3;
-export const heroDefense = h => 10 + mod(h.attrs.agility) + (h.armor || 0) + (h.bulwarkMs > 0 ? BULWARK_DEF : 0);
+export const heroDefense = h => 10 + mod(h.attrs.agility) + (h.armor || 0) + (accessoryOf(h).def || 0) + (h.bulwarkMs > 0 ? BULWARK_DEF : 0);
 export const enemyAt = (g, x, y) => g.enemies.find(e => e.hp > 0 && e.x === x && e.y === y);
 export const enemyAhead = g => enemyAt(g, g.x + DX[g.dir], g.y + DY[g.dir]);
 
@@ -115,7 +116,7 @@ export function heroAttack(g, i) {
     return { ok: true, hit: false };
   }
   const stab = canBackstab(h, e);
-  let dmg = Math.max(1, dice(g, w.dice) + mod(stat) + (stab ? dice(g, BACKSTAB) : 0));
+  let dmg = Math.max(1, dice(g, w.dice) + mod(stat) + (accessoryOf(h).dmg || 0) + (stab ? dice(g, BACKSTAB) : 0));
   if (roll === 20) dmg *= 2;
   if (!strike(g, e, dmg)) {
     say(g, `${h.name}'s blow glances off ${e.name}. Her lamps still burn!`);

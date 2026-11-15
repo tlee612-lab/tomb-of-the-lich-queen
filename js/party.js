@@ -3,6 +3,7 @@
 import { CLASSES, ATTRS, ATTR_BASE, ATTR_MAX, ATTR_POINTS } from './data/classes.js';
 import { ROSTER, QUICK_START } from './data/roster.js';
 import { loadoutFor } from './spellbook.js';
+import { START_GEAR } from './data/gear.js';
 
 export const mod = v => Math.floor((v - 10) / 2);
 
@@ -30,7 +31,7 @@ export function createHero(o) {
     id: o.id || 'h' + Math.random().toString(36).slice(2, 8),
     name: o.name.trim(), class: o.class, portrait: o.portrait || null,
     level: 1, xp: 0, attrs: { ...o.attrs }, hpMax, hp: hpMax, status: [], row: c.row,
-    weapon: c.weapon, armor: c.armor, cd: 0, inventory: [], quickSlots: [null, null],
+    weapon: c.weapon, armor: c.armor, armorName: START_GEAR[o.class].armor, accessory: null, cd: 0, inventory: [], quickSlots: [null, null],
     spellsKnown: [...c.spells], spellsMemorized: [],
   };
   hero.spellsMemorized = loadoutFor(hero);

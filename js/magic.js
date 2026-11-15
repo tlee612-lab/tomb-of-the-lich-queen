@@ -5,6 +5,7 @@ import { SPELLS } from './data/spells.js';
 import { alive, enemyAhead, enemyAt, distances, createMonster, kill, dice, addFx, tick, strike, splitOoze } from './combat.js';
 import { loadoutFor } from './spellbook.js';
 import { diff } from './difficulty.js';
+import { accessoryOf } from './data/gear.js';
 
 const mod = v => Math.floor((v - 10) / 2);
 const say = (g, m) => g.msgs.push(m);
@@ -68,7 +69,7 @@ export function castSpell(g, i, name, targetIdx) {
     say(g, `${h.name}'s ${name} slows the ${target.name}.`);
     addFx(g, target, 'slowed', '#7fd0ff');
   } else if (sp.heal) {
-    const n = Math.max(1, dice(g, sp.heal) + mod(h.attrs[sp.stat])), gain = Math.min(n, target.hpMax - target.hp);
+    const n = Math.max(1, dice(g, sp.heal) + mod(h.attrs[sp.stat]) + (accessoryOf(h).spell || 0)), gain = Math.min(n, target.hpMax - target.hp);
     target.hp += gain; hurtText(target, `+${gain}`);
     say(g, `${h.name} heals ${target.name} for ${gain}.`);
   } else if (sp.lightMs) {
@@ -88,7 +89,7 @@ export function castSpell(g, i, name, targetIdx) {
 
 // One spell hit on one enemy. Returns true if it landed.
 function zap(g, h, name, sp, e) {
-  const dmg = Math.max(1, dice(g, sp.dmg) + mod(h.attrs[sp.stat]));
+  const dmg = Math.max(1, dice(g, sp.dmg) + mod(h.attrs[sp.stat]) + (accessoryOf(h).spell || 0));
   if (!strike(g, e, dmg)) { say(g, `${h.name}'s ${name} fizzles against the Queen's ward!`); return false; }
   say(g, `${h.name}'s ${name} ${sp.chain ? 'shocks' : sp.fire ? 'burns' : 'batters'} the ${e.name} for ${dmg}.`);
   addFx(g, e, String(dmg), sp.chain ? '#bfe6ff' : '#ff9a3c');

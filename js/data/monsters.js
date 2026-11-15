@@ -1,11 +1,13 @@
 // Monsters. def = defense the attacker must reach with d20 + bonus. dmg = [count, sides, bonus].
 // atkMs = time between attacks, moveMs = time per step, aggro = path distance at which it hunts.
-// `sprite` (optional image path) replaces the drawn placeholder.
+// `sprite` (optional image path, or a set of poses made by pose()) replaces the drawn placeholder.
+const pose = n => ({ idle: `assets/monsters/${n}.png`, walk: [`assets/monsters/${n}_w1.png`, `assets/monsters/${n}_w2.png`], wind: `assets/monsters/${n}_a.png`, strike: `assets/monsters/${n}_b.png` });
+
 export const MONSTERS = {
   tomb_rat:    { name: 'Tomb Rat',    hp: 6,  def: 11, atk: 2, dmg: [1, 4, 0], atkMs: 800,  moveMs: 450,  aggro: 6, xp: 5,  kind: 'rat',    undead: false },
-  bone_wretch: { name: 'Bone Wretch', hp: 18, def: 12, atk: 3, dmg: [1, 8, 0], atkMs: 1700, moveMs: 1000, aggro: 5, xp: 21, kind: 'wretch', undead: true  },
+  bone_wretch: { sprite: pose('wretch'), name: 'Bone Wretch', hp: 18, def: 12, atk: 3, dmg: [1, 8, 0], atkMs: 1700, moveMs: 1000, aggro: 5, xp: 21, kind: 'wretch', undead: true  },
   mire_ooze:         { name: 'Mire Ooze',         hp: 20, def: 9,  atk: 3, dmg: [1, 6, 1], atkMs: 1300, moveMs: 1300, aggro: 5, xp: 16, kind: 'ooze',   undead: false, poison: true, splits: true },   // fire splits it in two (splitOoze in combat.js)
-  gravebound_guard:  { name: 'Gravebound Guard',  hp: 36, def: 14, atk: 5, dmg: [1, 10, 1], atkMs: 1900, moveMs: 1500, aggro: 5, xp: 39, kind: 'guard',  undead: true  },
+  gravebound_guard:  { sprite: pose('guard'), name: 'Gravebound Guard',  hp: 36, def: 14, atk: 5, dmg: [1, 10, 1], atkMs: 1900, moveMs: 1500, aggro: 5, xp: 39, kind: 'guard',  undead: true  },
   sepulchral_spider: { name: 'Sepulchral Spider', hp: 14, def: 13, atk: 5, dmg: [1, 6, 1], atkMs: 1500, moveMs: 700,  aggro: 7, xp: 26, kind: 'spider', undead: false, ranged: { range: 3, web: true } },
   cinder_wraith:     { name: 'Cinder Wraith',     hp: 24, def: 14, atk: 5, dmg: [1, 8, 1], atkMs: 1400, moveMs: 1000, aggro: 6, xp: 42, kind: 'wraith', undead: true, strikesBack: true },
   // The Lich Queen: warded while any phylactery lamp burns; stays in her chamber (leash = x1,y1,x2,y2).

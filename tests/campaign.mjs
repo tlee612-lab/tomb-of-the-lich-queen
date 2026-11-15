@@ -50,7 +50,7 @@ floors.forEach((f, fi) => {
   const decorSeen = new Set();
   for (const d of f.decor) {
     assert.equal(tileAt(f, d.x, d.y), '#', `${here}: decoration at ${d.x},${d.y} is on a wall`);
-    assert.ok(['hole', 'grate'].includes(d.kind), `${here}: known decoration ${d.kind}`);
+    assert.ok(['drain', 'grate'].includes(d.kind), `${here}: known decoration ${d.kind}`);
     assert.ok(walkable(d.x + DX[d.face], d.y + DY[d.face]), `${here}: decoration at ${d.x},${d.y} can be seen from open floor`);
     const spot = `${d.x},${d.y},${d.face}`;
     assert.ok(!decorSeen.has(spot), `${here}: one decoration per wall face`); decorSeen.add(spot);

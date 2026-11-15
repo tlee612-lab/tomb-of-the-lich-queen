@@ -178,6 +178,7 @@ function pickTarget(g, e) {
 function enemyAttack(g, e, ranged) {
   const t = MONSTERS[e.type], h = pickTarget(g, e);
   if (!h) return;
+  e.strikeMs = 450;                                          // drawn lunging for a moment (render.js)
   e.engaged = true;
   const roll = d20(g);
   if (roll === 1 || (roll !== 20 && roll + t.atk < heroDefense(h))) {
@@ -220,7 +221,7 @@ export function tick(g, dt) {
       const t = MONSTERS[e.type], d = dist[e.y][e.x];
       const edt = e.slowMs > 0 ? dt / 2 : dt;                    // slowed enemies act at half speed
       e.slowMs = Math.max(0, (e.slowMs || 0) - dt);
-      e.flash = Math.max(0, e.flash - dt); e.atkCd -= edt; e.moveCd -= edt;
+      e.flash = Math.max(0, e.flash - dt); e.strikeMs = Math.max(0, (e.strikeMs || 0) - dt); e.stepMs = Math.max(0, (e.stepMs || 0) - dt); e.atkCd -= edt; e.moveCd -= edt;
       while (t.summons && e.phase < t.summons.length && e.hp / e.hpMax <= t.summons[e.phase]) {
         e.phase++; spawnNear(g, 'bone_wretch', 2, 5, t.summonCount ?? 2);
         say(g, `${e.name} screams, and the dead claw up from the floor!`);
@@ -236,7 +237,7 @@ export function tick(g, dt) {
           const nx = e.x + DX[k], ny = e.y + DY[k];
           if (t.leash && (nx < t.leash[0] || ny < t.leash[1] || nx > t.leash[2] || ny > t.leash[3])) continue;
           if (dist[ny]?.[nx] === d - 1 && !(nx === g.x && ny === g.y) && !enemyAt(g, nx, ny)) {
-            e.x = nx; e.y = ny; e.moveCd = t.moveMs;
+            e.x = nx; e.y = ny; e.moveCd = t.moveMs; e.stepMs = Math.min(700, t.moveMs);
             if (d - 1 === 1) e.atkCd = Math.max(e.atkCd, 400);   // brief wind-up on arrival
             break;
           }

@@ -45,9 +45,9 @@ const winFor = (cx, cy, face) => WIN_X[Math.abs(cx * 7 + cy * 13 + face * 5) % 3
 const shadeAlpha = z => 1 - Math.max(0.12, 1 - z / reach);
 
 // ---- wall decorations: a painted piece placed on one wall face (`decor` in js/data/floors.js: { x, y, face, kind }) --------------------
-const DECOR_PIC = { hole: 'assets/decor/hole.png', grate: 'assets/decor/grate.png' };
-// wf: width as a fraction of the wall face; vc: centre height, or vb: bottom edge, as fractions of the face height (0 top .. 1 floor)
-const DECOR = { hole: { wf: 0.44, vc: 0.42 }, grate: { wf: 0.62, vb: 0.97 } };
+const DECOR_PIC = { drain: 'assets/decor/drain.png', grate: 'assets/decor/grate.png' };
+// wf: width as a fraction of the wall face; vt: top edge, vc: centre, or vb: bottom edge, as fractions of the face height (0 top .. 1 floor)
+const DECOR = { drain: { wf: 0.4, vt: 0.16 }, grate: { wf: 0.62, vb: 0.97 } };
 const decorShaded = {};
 // The piece darkened for distance, cached in a few steps so a wall far away is not as bright as one beside you.
 function decorImg(kind, z) {
@@ -63,7 +63,7 @@ function decorImg(kind, z) {
   return decorShaded[key];
 }
 function decorBox(kind, im) {
-  const d = DECOR[kind], hf = (d.wf * (im.height / im.width)) / (2 * HALF_H), v0 = d.vb !== undefined ? d.vb - hf : d.vc - hf / 2;
+  const d = DECOR[kind], hf = (d.wf * (im.height / im.width)) / (2 * HALF_H), v0 = d.vt !== undefined ? d.vt : d.vb !== undefined ? d.vb - hf : d.vc - hf / 2;
   return { u0: 0.5 - d.wf / 2, u1: 0.5 + d.wf / 2, v0, v1: v0 + hf };
 }
 function drawDecorFront(ctx, deco, x0, y0, w, h, z) {
@@ -262,9 +262,17 @@ function drawMonster(ctx, e, zc, t, spriteSrc) {
   const [cx, fy] = proj(0, HALF_H, zc), u = FOCAL / zc;       // u = pixels per world unit at this depth
   const f = e.flash > 0 ? 0.65 : 0;
   const c = base => shade(mix(base, f), zc);
-  const img = spriteImage(spriteSrc);
-  if (img) {
-    const h = (e.kind === 'rat' ? 0.45 : 1.0) * u, w = (img.naturalWidth / img.naturalHeight) * h;
+  const poses = typeof spriteSrc === 'string' ? { idle: spriteSrc } : spriteSrc;
+  const idle = poses && spriteImage(poses.idle);
+  if (idle) {
+    // Which painted pose: lunge just after a strike, weapon raised just before one, walking while it steps.
+    let src = poses.idle;
+    if (poses.strike && e.strikeMs > 200) src = poses.strike;
+    else if (poses.wind && (e.strikeMs > 0 || (e.atkCd > 0 && e.atkCd < 350 && e.engaged))) src = poses.wind;
+    else if (poses.walk && e.stepMs > 0) src = poses.walk[Math.floor(t / 240) % poses.walk.length];
+    const img = spriteImage(src) || idle;
+    const k = ((e.kind === 'rat' ? 0.45 : 1.0) * u) / idle.naturalHeight;     // one scale for every pose, so they match
+    const w = img.naturalWidth * k, h = img.naturalHeight * k;
     ctx.drawImage(img, cx - w / 2, fy - h, w, h); return h;
   }
   const bob = Math.sin(t / 220 + e.x * 3 + e.y) * 0.015 * u;

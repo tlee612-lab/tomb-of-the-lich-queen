@@ -8,10 +8,10 @@ const FLOORS = [
     name: 'The Barrow Halls', w: 18, h: 14, start: { x: 1, y: 1, dir: 2 }, wall: 'assets/walls/brick-red.png',
     // painted wall decorations: the wall cell, the way the decoration faces (0 N, 1 E, 2 S, 3 W), and the piece
     decor: [
-      { x: 0, y: 2, face: 1, kind: 'hole' }, { x: 2, y: 0, face: 2, kind: 'grate' },
-      { x: 6, y: 0, face: 2, kind: 'hole' }, { x: 5, y: 4, face: 0, kind: 'grate' }, { x: 9, y: 4, face: 0, kind: 'grate' },
-      { x: 5, y: 5, face: 2, kind: 'hole' }, { x: 9, y: 9, face: 0, kind: 'grate' },
-      { x: 12, y: 4, face: 0, kind: 'grate' }, { x: 12, y: 6, face: 2, kind: 'grate' }, { x: 15, y: 8, face: 3, kind: 'hole' },
+      { x: 0, y: 2, face: 1, kind: 'drain' }, { x: 2, y: 0, face: 2, kind: 'grate' },
+      { x: 6, y: 0, face: 2, kind: 'drain' }, { x: 5, y: 4, face: 0, kind: 'grate' }, { x: 9, y: 4, face: 0, kind: 'grate' },
+      { x: 5, y: 5, face: 2, kind: 'drain' }, { x: 9, y: 9, face: 0, kind: 'grate' },
+      { x: 12, y: 4, face: 0, kind: 'grate' }, { x: 12, y: 6, face: 2, kind: 'grate' }, { x: 15, y: 8, face: 3, kind: 'drain' },
     ],
     carve: [[1, 1, 3, 3], [4, 2, 4, 2], [5, 1, 9, 3], [10, 2, 10, 2], [11, 1, 14, 3],
             [7, 4, 7, 5], [5, 6, 9, 8], [13, 4, 13, 6], [11, 7, 14, 10], [12, 11, 12, 12], [1, 8, 3, 9], [4, 8, 4, 8], [16, 1, 16, 2]],

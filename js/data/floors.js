@@ -5,7 +5,7 @@ import { buildMap } from '../map.js';
 
 const FLOORS = [
   { // ---- 1. The Barrow Halls: doors, a key, a plate, a hidden switch, first fights ----
-    name: 'The Barrow Halls', w: 18, h: 14, start: { x: 1, y: 1, dir: 2 },
+    name: 'The Barrow Halls', w: 18, h: 14, start: { x: 1, y: 1, dir: 2 }, wall: 'assets/walls/brick-red.png',
     carve: [[1, 1, 3, 3], [4, 2, 4, 2], [5, 1, 9, 3], [10, 2, 10, 2], [11, 1, 14, 3],
             [7, 4, 7, 5], [5, 6, 9, 8], [13, 4, 13, 6], [11, 7, 14, 10], [12, 11, 12, 12], [1, 8, 3, 9], [4, 8, 4, 8], [16, 1, 16, 2]],
     set: { '4,2': 'D', '10,2': 'L', '13,4': 'G', '4,8': 'G', '12,2': 'P', '11,9': 'H', '12,12': '>', '15,2': 'L', '10,8': 'W' },

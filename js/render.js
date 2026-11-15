@@ -36,12 +36,26 @@ function poly(ctx, pts, fill, line) {
   if (line) { ctx.strokeStyle = line; ctx.lineWidth = 1; ctx.stroke(); }
 }
 
+// ---- painted wall pictures ---------------------------------------------------------------------------------
+// A floor may name a wall picture (`wall` in js/data/floors.js). It is used as painted, with only distance shading over it.
+// The picture is a strip of brick; each wall face takes one of three windows of it, chosen by its cell, so walls do not all repeat.
+let wallTex = null;
+const WIN_X = [0, 340, 680], WIN_W = 340;
+const winFor = (cx, cy, face) => WIN_X[Math.abs(cx * 7 + cy * 13 + face * 5) % 3];
+const shadeAlpha = z => 1 - Math.max(0.12, 1 - z / reach);
+
 // Wall face toward the viewer, centred at lateral offset lx, at distance z.
-function frontWall(ctx, lx, z, ch, sw) {
+function frontWall(ctx, lx, z, ch, sw, cell) {
   const pal = PALETTE[ch] || PALETTE['#'];
   const a = proj(lx - 0.5, -HALF_H, z), b = proj(lx + 0.5, HALF_H, z);
   const x0 = Math.round(a[0]), y0 = Math.round(a[1]);
   const w = Math.round(b[0] - a[0]) + 1, h = Math.round(b[1] - a[1]) + 1;
+  if (ch === '#' && wallTex && cell) {                                      // a painted brick wall
+    ctx.drawImage(wallTex, winFor(cell[0], cell[1], 0), 0, WIN_W, wallTex.naturalHeight, x0, y0, w, h);
+    ctx.fillStyle = '#000'; ctx.globalAlpha = shadeAlpha(z); ctx.fillRect(x0, y0, w, h); ctx.globalAlpha = 1;
+    if (sw) drawWallFeature(ctx, sw, x0, y0, w, h, z);
+    return;
+  }
   ctx.fillStyle = shade(pal.fill, z);
   ctx.fillRect(x0, y0, w, h);
   ctx.strokeStyle = shade(pal.line, z); ctx.lineWidth = 1;
@@ -82,6 +96,11 @@ function frontWall(ctx, lx, z, ch, sw) {
       }
     }
   }
+  drawWallFeature(ctx, sw, x0, y0, w, h, z);
+}
+
+// What is mounted on a front wall: an inscription plaque, a phylactery lamp or a wall switch.
+function drawWallFeature(ctx, sw, x0, y0, w, h, z) {
   if (sw && sw.plaque) {                             // inscription: a small parchment plaque
     const px = x0 + w * 0.5, py = y0 + h * 0.45, pw = w * 0.2, ph = h * 0.28;
     ctx.fillStyle = shade([205, 185, 140], z); ctx.fillRect(px - pw / 2, py - ph / 2, pw, ph);
@@ -104,9 +123,24 @@ function frontWall(ctx, lx, z, ch, sw) {
 }
 
 // Side wall at lateral x (negative = left), spanning distance z0..z1.
-function sideWall(ctx, x, z0, z1, ch) {
+function sideWall(ctx, x, z0, z1, ch, cell) {
   const pal = PALETTE[ch] || PALETTE['#'];
   const zm = (z0 + z1) / 2;
+  if (ch === '#' && wallTex && cell) {                                      // painted brick, mapped with perspective column by column
+    const xa = Math.round(CX + (x * FOCAL) / z0), xb = Math.round(CX + (x * FOCAL) / z1);
+    const lo = Math.min(xa, xb), hi = Math.max(xa, xb), sx = winFor(cell[0], cell[1], 1), th = wallTex.naturalHeight;
+    const i0 = 1 / z0, i1 = 1 / z1;
+    ctx.fillStyle = '#000';
+    for (let px = lo; px <= hi; px++) {
+      const z = (x * FOCAL) / (px + 0.5 - CX);                            // depth at this screen column
+      if (!(z >= Math.min(z0, z1) - 1e-6 && z <= Math.max(z0, z1) + 1e-6)) continue;
+      const u = (1 / z - i0) / (i1 - i0);                                 // perspective-correct position along the wall, 0 near .. 1 far
+      const top = CY - (HALF_H * FOCAL) / z, hgt = (2 * HALF_H * FOCAL) / z;
+      ctx.drawImage(wallTex, sx + Math.min(WIN_W - 1, Math.max(0, u * WIN_W)), 0, 1, th, px, top, 1, hgt);
+      ctx.globalAlpha = shadeAlpha(z); ctx.fillRect(px, top, 1, hgt); ctx.globalAlpha = 1;
+    }
+    return;
+  }
   poly(ctx, [proj(x, -HALF_H, z0), proj(x, -HALF_H, z1), proj(x, HALF_H, z1), proj(x, HALF_H, z0)],
     shade(pal.side, zm), shade(pal.line, zm));
 }
@@ -283,6 +317,7 @@ function drawEnemies(ctx, p, cx, cy, z0, z1, t) {
 
 export function render(ctx, map, p, t = 0, view = {}) {
   camZ = view.cz || 0;
+  wallTex = map.wall ? spriteImage(map.wall) : null;          // painted walls, once the picture has loaded
   reach = p.lightMs > 0 ? DEPTH + 4 : (map.dark ? 2.6 : DEPTH + 1.2);   // dark floors need the Lantern Ward
   const g1 = ctx.createLinearGradient(0, 0, 0, CY);
   g1.addColorStop(0, '#0a0806'); g1.addColorStop(1, '#2b231a');
@@ -311,7 +346,7 @@ export function render(ctx, map, p, t = 0, view = {}) {
     if (z1 <= NEAR) continue;                                    // wholly behind the camera
     const z0 = Math.max(rz0, NEAR);
     for (const side of [-1, 1]) {
-      if (!solid(k, side) && solid(k + 1, side) && !solid(k, 0)) frontWall(ctx, side, z1, tile(k + 1, side), null);
+      if (!solid(k, side) && solid(k + 1, side) && !solid(k, 0)) frontWall(ctx, side, z1, tile(k + 1, side), null, cell(k + 1, side));
     }
     if (solid(k, 0)) continue;
     const [cx, cy] = cell(k, 0);
@@ -323,9 +358,9 @@ export function render(ctx, map, p, t = 0, view = {}) {
         gem: item.id === 'redgem' ? [230, 40, 70] : [60, 120, 255], xp: [255, 240, 180] }[item.kind] || [230, 200, 70];
       floorMark(ctx, z0, z1, 0.25, shade(col, (z0 + z1) / 2), shade([255, 255, 255].map((v, i) => col[i] * 0.5), (z0 + z1) / 2));
     }
-    if (solid(k, -1)) sideWall(ctx, -0.5, z0, z1, tile(k, -1));
-    if (solid(k, 1)) sideWall(ctx, 0.5, z0, z1, tile(k, 1));
-    if (solid(k + 1, 0)) frontWall(ctx, 0, z1, tile(k + 1, 0), switchOn(k + 1, 0));
+    if (solid(k, -1)) sideWall(ctx, -0.5, z0, z1, tile(k, -1), cell(k, -1));
+    if (solid(k, 1)) sideWall(ctx, 0.5, z0, z1, tile(k, 1), cell(k, 1));
+    if (solid(k + 1, 0)) frontWall(ctx, 0, z1, tile(k + 1, 0), switchOn(k + 1, 0), cell(k + 1, 0));
     if (k >= 1) drawNpc(ctx, map, cx, cy, rz0, z1);
     if (k >= 1 && p.enemies) drawEnemies(ctx, p, cx, cy, rz0, z1, t);
   }

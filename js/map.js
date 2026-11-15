@@ -41,7 +41,7 @@ export function buildMap(spec) {
     switches: (copy(spec.switches) || []).map(s => ({ ...s, found: !s.hidden, on: false })),
     teleports: copy(spec.teleports) || [], monsters: copy(spec.monsters) || [], shrines: copy(spec.shrines) || [],
     stairs: copy(spec.stairs) || [], sockets: copy(spec.sockets) || {},
-    lamps: (copy(spec.lamps) || []).map(l => ({ ...l, lit: true })), traps, rescue: spec.rescue || null,
+    lamps: (copy(spec.lamps) || []).map(l => ({ ...l, lit: true })), traps, rescue: spec.rescue || null, wall: spec.wall || null,
     npcs: (copy(spec.npcs) || []).map(n => ({ ...n, freed: false })),
     inscriptions: (copy(spec.inscriptions) || []).map(i => ({ ...i, seen: false })),
   };

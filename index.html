@@ -42,9 +42,12 @@
   </div></div>
 </section>
 <main id="game" hidden>
+  <div id="stage">
   <div id="viewframe"><canvas id="view" width="448" height="300"></canvas>
     <canvas id="minimap" width="99" height="99" title="Tap for the full map (N)"></canvas>
     <div id="overlay" hidden><div id="overlayText"></div><button id="loadBtn" type="button" hidden>Load autosave</button><button id="retryBtn" type="button" hidden>Try again</button></div></div>
+  <div id="log"></div>
+  </div>
   <aside id="party"></aside>
   <div id="controls">
     <div id="floorName"></div>
@@ -65,7 +68,6 @@
       <button id="soundBtn" type="button">Sound on <span class="k">(M)</span></button>
     </div>
     </div>
-    <div id="log"></div>
   </div>
 </main>
 <div id="modal" hidden role="dialog" aria-modal="true" aria-label="Game menu">

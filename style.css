@@ -3,7 +3,8 @@
 body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.3 "Courier New", monospace;
   display:flex; justify-content:center; padding:12px; }
 #game { display:grid; grid-template-columns:auto 290px; gap:8px; max-width:100%; }
-#viewframe { border:4px ridge var(--edge); background:#000; position:relative; justify-self:start; align-self:start; }
+#stage { display:grid; grid-template-columns:min-content; gap:6px; justify-self:start; align-self:start; }   /* the view, with the event log right under it */
+#viewframe { border:4px ridge var(--edge); background:#000; position:relative; }
 #view { display:block; width:min(672px, calc(100vw - 40px)); aspect-ratio:448/300; image-rendering:pixelated; }
 #minimap { position:absolute; top:6px; right:6px; width:22%; aspect-ratio:1; image-rendering:pixelated; border:2px solid var(--edge); background:#050304; opacity:.88; cursor:pointer; }
 #fullmap { display:block; margin:0 auto; width:min(100%, 560px); aspect-ratio:1; image-rendering:pixelated; border:2px solid var(--edge); }
@@ -20,27 +21,26 @@ body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.3 "Courier 
 #pad button { height:36px; background:var(--panel); color:var(--ink); border:2px solid var(--edge);
   font-size:18px; cursor:pointer; }
 #pad button:active { background:var(--edge); }
-#log { flex:1; min-height:80px; white-space:pre-line; background:var(--panel); border:2px solid var(--edge); padding:6px; }
+#log { height:7.6em; overflow:hidden; white-space:pre-line; background:var(--panel); border:2px solid var(--edge); padding:6px; }
 @media (max-width:960px) {
   #game { grid-template-columns:minmax(0,1fr); }
   #party { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .hero, #controls, #log { min-width:0; }
   .hero button { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
   #controls { flex-wrap:wrap; }
-  #log { flex:1 1 100%; order:5; }
   body { padding:8px; }
 }
-#compass { order:0; } #floorName { order:1; } #pad { order:2; } #sys { order:3; } #log { order:4; }
+#compass { order:0; } #floorName { order:1; } #pad { order:2; } #sys { order:3; }
 #nav { display:contents; }                        /* desktop: the compass, pad and system buttons sit in the controls row as before */
 /* Phones: the view, then the movement pad and system buttons right under it, then the party, then the log,
    so the view and the controls are on screen together. */
 @media (max-width:700px), (orientation:landscape) and (max-height:520px) {
   #controls { display:contents; }
-  #viewframe { order:1; justify-self:center; }
+  #stage { order:1; justify-self:center; }
   #nav { order:2; display:flex; gap:8px; align-items:stretch; min-width:0; }
   #party { order:3; }
   #floorName { order:4; }
-  #log { order:5; flex:none; min-height:64px; }
+  #log { height:4.2em; font-size:12px; padding:3px 5px; }    /* a few lines, so the view and the pad still fit one screen */
   #pad { grid-template-columns:repeat(3,1fr); flex:1; gap:4px; }
   #pad button { height:44px; font-size:22px; }
   #compass { width:36px; height:auto; }
@@ -53,12 +53,12 @@ body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.3 "Courier 
 @media (orientation:landscape) and (max-height:520px) {
   body { padding:6px; }
   #game { grid-template-columns:auto minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); gap:6px; align-items:start; }
-  #viewframe { grid-column:1; grid-row:1 / span 4; order:0; justify-self:start; position:sticky; top:0; }
-  #view { width:min(58vw, calc((100vh - 28px) * 1.4933)); }
+  #stage { grid-column:1; grid-row:1 / span 4; order:0; justify-self:start; position:sticky; top:0; }
+  #view { width:min(58vw, calc((100vh - 76px) * 1.4933)); }
   #nav { grid-column:2; grid-row:1; order:0; }
   #party { grid-column:2; grid-row:2; order:0; }
-  #floorName, #log { grid-column:2; order:0; }
-  #log { min-height:48px; }
+  #floorName { grid-column:2; order:0; }
+  #log { height:3.6em; }
 }
 button { touch-action:manipulation; }             /* no double-tap zoom on the buttons */
 

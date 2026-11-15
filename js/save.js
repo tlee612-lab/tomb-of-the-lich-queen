@@ -18,7 +18,7 @@ export function serialize(g) {
     journal: clone(g.journal), party: clone(g.party),
     floors: g.floors.map(f => clone({
       grid: f.grid.map(r => r.join('')), items: f.items, plates: f.plates, switches: f.switches, shrines: f.shrines,
-      traps: f.traps, lamps: f.lamps, inscriptions: f.inscriptions, placed: f.placed || {}, enemies: f.enemies, npcs: f.npcs,
+      traps: f.traps, lamps: f.lamps, inscriptions: f.inscriptions, placed: f.placed || {}, enemies: f.enemies, npcs: f.npcs, explored: f.explored || {},
     })),
   };
 }
@@ -44,7 +44,7 @@ export function restore(data, rng = Math.random) {
     if (s.grid.length !== f.h || s.grid.some(r => r.length !== f.w)) throw new Error('size mismatch');
     f.grid = s.grid.map(r => r.split(''));
     Object.assign(f, { items: s.items, plates: s.plates, switches: s.switches, shrines: s.shrines, traps: s.traps,
-      lamps: s.lamps, inscriptions: s.inscriptions, placed: s.placed, enemies: s.enemies, npcs: s.npcs || f.npcs });
+      lamps: s.lamps, inscriptions: s.inscriptions, placed: s.placed, enemies: s.enemies, npcs: s.npcs || f.npcs, explored: s.explored || {} });
   });
   Object.assign(g, { floor: d.floor, map: floors[d.floor], x: d.x, y: d.y, dir: d.dir, bag: d.bag, rations: d.rations,
     hungerMs: d.hungerMs || 0, starving: !!d.starving, starveMs: d.starveMs || 0, lightMs: d.lightMs || 0, sanctMs: d.sanctMs || 0,

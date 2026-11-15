@@ -43,6 +43,7 @@
 </section>
 <main id="game" hidden>
   <div id="viewframe"><canvas id="view" width="448" height="300"></canvas>
+    <canvas id="minimap" width="99" height="99" title="Tap for the full map (N)"></canvas>
     <div id="overlay" hidden><div id="overlayText"></div><button id="loadBtn" type="button" hidden>Load autosave</button><button id="retryBtn" type="button" hidden>Try again</button></div></div>
   <aside id="party"></aside>
   <div id="controls">
@@ -69,7 +70,7 @@
 </main>
 <div id="modal" hidden role="dialog" aria-modal="true" aria-label="Game menu">
   <div id="modalBox">
-    <div id="tabs"><button type="button" data-tab="menu">Menu</button><button type="button" data-tab="inventory">Inventory</button><button type="button" data-tab="spells">Spells</button><button type="button" data-tab="journal">Journal</button><button type="button" data-tab="help">Help</button><button type="button" id="closeModal">Close (Esc)</button></div>
+    <div id="tabs"><button type="button" data-tab="menu">Menu</button><button type="button" data-tab="inventory">Inventory</button><button type="button" data-tab="spells">Spells</button><button type="button" data-tab="map">Map</button><button type="button" data-tab="journal">Journal</button><button type="button" data-tab="help">Help</button><button type="button" id="closeModal">Close (Esc)</button></div>
     <div id="tabBody"></div>
   </div>
 </div>

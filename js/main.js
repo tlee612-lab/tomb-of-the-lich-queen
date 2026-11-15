@@ -2,6 +2,7 @@ import { DIR_NAMES, DX, DY } from './map.js';
 import { loadCampaign } from './data/floors.js';
 import { newGame, step, turn, interact, look } from './world.js';
 import { render } from './render.js';
+import { drawMap } from './automap.js';
 import { runSetup, portraitHTML } from './setup.js';
 import { heroAttack, canAct, enemyAhead, retry, alive, heroDefense } from './combat.js';
 import { WEAPONS } from './data/weapons.js';
@@ -195,6 +196,10 @@ function renderModal() {
           plan.map((cur, s) => `<select data-plan="${i}:${s}" aria-label="${esc(h.name)} slot ${s + 1}">${h.spellsKnown.map(n => `<option value="${esc(n)}"${n === cur ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>`).join('') + '</div>' +
           `<p class="note">${h.spellsKnown.map(n => `<b>${esc(n)}</b>: ${esc(SPELLS[n].text)}`).join('<br>')}</p>`;
       }).join('');
+  } else if (modalTab === 'map') {
+    body.innerHTML = `<h3>${esc(game.map.name)}</h3><canvas id="fullmap" width="560" height="560"></canvas>` +
+      '<p class="note">Only places the party has seen are shown. ▲ ▼ stairs, + shrine, * teleporter or spinner. Brown doors, red locked, purple gem door, grey gate.</p>';
+    drawMap($('fullmap'), game);
   } else if (modalTab === 'journal') {
     if (!game.journal.length) body.innerHTML = '<p>Nothing recorded yet. Inscriptions you read are saved here automatically, so a clue is never lost.</p>';
     else {
@@ -253,6 +258,7 @@ $('modal').addEventListener('change', e => {
 });
 $('menuBtn').addEventListener('click', () => openModal('menu'));
 $('journalBtn').addEventListener('click', () => openModal('journal'));
+$('minimap').addEventListener('click', () => openModal('map'));
 
 addEventListener('keydown', e => {
   if (!started || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -261,6 +267,7 @@ addEventListener('keydown', e => {
   if (k === 'Escape') { e.preventDefault(); if (pending) cancelTarget(); else if (modalOpen) closeModal(); else openModal('menu'); return; }
   if (k === 'i') { e.preventDefault(); if (modalOpen && modalTab === 'inventory') closeModal(); else openModal('inventory'); return; }
   if (k === 'j') { e.preventDefault(); if (modalOpen && modalTab === 'journal') closeModal(); else openModal('journal'); return; }
+  if (k === 'n') { e.preventDefault(); if (modalOpen && modalTab === 'map') closeModal(); else openModal('map'); return; }
   if (k === 'm') { e.preventDefault(); toggleSound(); return; }
   if (modalOpen) return;
   if (k === 'p') { e.preventDefault(); togglePause(); return; }
@@ -357,6 +364,7 @@ function loop(t) {
   let view = {};
   if (anim) { view = animView(anim, t); if (view.done) { anim = null; animSnapshot = null; } else view.snapshot = animSnapshot; }
   render(ctx, game.map, game, t, view);
+  drawMap($('minimap'), game, 5);
   $('compass').textContent = DIR_NAMES[game.dir];
   $('floorName').textContent = `Floor ${game.floor + 1} of ${game.floors.length}: ${game.map.name}`;
   updateParty(); updateOverlay();

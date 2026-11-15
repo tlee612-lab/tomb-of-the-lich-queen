@@ -3,6 +3,7 @@
 import { DX, DY, tileAt, isSolid } from './map.js';
 import { buildEnemies, enemyAt, alive, dice, gainXp, XP_LEVELS } from './combat.js';
 import { useShrine } from './magic.js';
+import { explore } from './automap.js';
 import { createHero } from './party.js';
 import { CLASSES } from './data/classes.js';
 import { GEAR } from './data/gear.js';
@@ -57,6 +58,7 @@ function seesInscription(g, ins) {
 
 // Passive search: inscriptions are read, switches directly ahead are noticed, and a living Cutpurse spots pits.
 export function look(g) {
+  explore(g);                                          // the automap remembers what has been seen
   for (const ins of g.map.inscriptions) {
     if (ins.seen || !seesInscription(g, ins)) continue;
     ins.seen = true;

@@ -49,7 +49,7 @@ const FLOORS = [
     ],
   },
   { // ---- 2. The Drowned Ossuary: teleporter, spinners, gem-socket door, poison ----
-    name: 'The Drowned Ossuary', w: 18, h: 14, start: { x: 1, y: 1, dir: 1 },
+    name: 'The Drowned Ossuary', w: 18, h: 14, start: { x: 1, y: 1, dir: 1 }, wall: 'assets/walls/brick-red.png',
     decor: [{ x: 6, y: 0, face: 2, kind: 'grate' }, { x: 9, y: 5, face: 2, kind: 'grate' }, { x: 5, y: 9, face: 0, kind: 'grate' }, { x: 11, y: 9, face: 0, kind: 'grate' }],
     carve: [[1, 1, 4, 3], [5, 2, 5, 2], [6, 1, 10, 3], [8, 4, 8, 5], [5, 6, 11, 8], [12, 7, 13, 7], [13, 8, 13, 9],
             [13, 10, 13, 10], [12, 11, 14, 12], [1, 6, 3, 8], [14, 9, 14, 9], [15, 9, 16, 10], [12, 1, 13, 2], [10, 4, 10, 4],
@@ -113,7 +113,7 @@ const FLOORS = [
     ],
   },
   { // ---- 3. The Cinder Court: darkness, hidden pits, spiders, wraiths, a second key ----
-    name: 'The Cinder Court', dark: true, w: 18, h: 14, start: { x: 1, y: 1, dir: 1 },
+    name: 'The Cinder Court', dark: true, w: 18, h: 14, start: { x: 1, y: 1, dir: 1 }, wall: 'assets/walls/brick-red.png',
     carve: [[1, 1, 4, 3], [5, 2, 5, 2], [6, 2, 12, 2], [13, 1, 16, 3], [15, 4, 15, 6], [11, 7, 16, 10], [10, 8, 10, 8],
             [5, 7, 9, 10], [7, 11, 7, 12], [13, 4, 13, 4], [12, 5, 13, 5], [1, 5, 3, 6]],
     set: { '1,1': '<', '5,2': 'D', '9,2': 'X', '11,2': 'X', '10,8': 'L', '7,11': 'G', '7,12': '>', '13,9': 'P',
@@ -149,7 +149,7 @@ const FLOORS = [
     ],
   },
   { // ---- 4. The Queen's Chamber: the finale ----
-    name: "The Queen's Chamber", w: 15, h: 13, start: { x: 7, y: 10, dir: 0 },
+    name: "The Queen's Chamber", w: 15, h: 13, start: { x: 7, y: 10, dir: 0 }, wall: 'assets/walls/brick-red.png',
     carve: [[3, 1, 11, 4], [7, 5, 7, 8], [6, 9, 8, 10], [10, 5, 10, 6]],
     set: { '7,10': '<', '7,7': 'H', '10,5': 'G' },
     rescue: [10, 5],                                                    // this gate opens when Veshara falls

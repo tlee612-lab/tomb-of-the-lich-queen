@@ -86,6 +86,7 @@ let pending = null;                       // an ally spell waiting for its targe
 function cancelTarget() { pending = null; $('party').classList.remove('targeting'); }
 function doRest() { if (locked()) return; cancelTarget(); rest(game); flushMessages(); }
 $('restBtn').addEventListener('click', doRest);
+$('useBtn').addEventListener('click', () => act('use'));
 
 function cast(i, name) {
   if (locked()) return;

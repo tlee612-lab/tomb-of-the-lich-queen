@@ -33,7 +33,7 @@ const snapCtx = snapCanvas.getContext('2d');
 
 // ---- messages, and the sounds that go with them ---------------------------------------------------------------
 const logLines = [];
-let wantAutosave = false;
+let wantAutosave = false, movedSinceSave = false;
 function flushMessages() {
   if (!game.msgs.length) return;
   while (game.msgs.length) {
@@ -77,6 +77,7 @@ function act(name) {
   flushMessages();
   const kind = classifyMove(before, where(), DX[before.dir], DY[before.dir]);
   if (kind) {
+    movedSinceSave = true;                                       // the autosave follows the party, a few seconds behind
     anim = startAnim(kind, performance.now()); animSnapshot = kind === 'fade' ? snapCanvas : null;
     if (kind === 'fwd' || kind === 'back') audio.play('step');
   }
@@ -117,8 +118,11 @@ $('soundBtn').addEventListener('click', toggleSound);
 let autoExists = !!describeSave('auto', storage), autoMs = 0, lastFloor = game.floor, armedSlot = null;
 function autosave() {
   if (!started || game.defeated || game.won) return;
-  autoExists = saveGame(game, 'auto', storage).ok || autoExists; autoMs = 0; wantAutosave = false;
+  autoExists = saveGame(game, 'auto', storage).ok || autoExists; autoMs = 0; wantAutosave = false; movedSinceSave = false;
 }
+// A phone can close the page the moment you switch away, so save right then as well.
+document.addEventListener('visibilitychange', () => { if (document.hidden) autosave(); });
+addEventListener('pagehide', autosave);
 
 function replaceGame(g, note) {
   game = g; game.paused = false; modalOpen = false; $('modal').hidden = true;
@@ -372,7 +376,7 @@ function loop(t) {
   const dt = Math.min(100, t - last); last = t;
   advance(game, dt);
   flushMessages();
-  if (!locked()) { autoMs += dt; if (game.floor !== lastFloor) { lastFloor = game.floor; autosave(); } else if (autoMs >= 30000 || wantAutosave) autosave(); }
+  if (!locked()) { autoMs += dt; if (game.floor !== lastFloor) { lastFloor = game.floor; autosave(); } else if (autoMs >= 30000 || wantAutosave || (movedSinceSave && autoMs >= 3000)) autosave(); }
   let view = {};
   if (anim) { view = animView(anim, t); if (view.done) { anim = null; animSnapshot = null; } else view.snapshot = animSnapshot; }
   render(ctx, game.map, game, t, view);
